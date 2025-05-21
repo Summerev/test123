@@ -1,5 +1,5 @@
 # Python 가상환경
-legal_env/
+legal_venv/
 
 # Python 캐시 파일
 __pycache__/
@@ -9,17 +9,22 @@ __pycache__/
 
 # 환경변수 파일
 .env
+.env.*
 
 # 패키지 배포 관련
 build/
 dist/
 *.egg-info/
+*.egg
 
 # VSCode 설정
 .vscode/
 
 # 로그 파일
 *.log
+logs/
+# 예외처리
+!logs/commit-log.txt
 
 # SQLite 데이터베이스
 *.sqlite3
@@ -32,6 +37,24 @@ htmlcov/
 coverage.xml
 *.cover
 .cache/
+.tox/
+.nox/
 
 # pip 관련 임시 파일
 pip-wheel-metadata/
+*.whl
+
+# mypy/pytest 등 정적 분석 도구
+.mypy_cache/
+.pytest_cache/
+
+# OS/에디터 시스템 파일
+.DS_Store
+Thumbs.db
+
+# PyCharm/JetBrains IDE 설정
+.idea/
+
+# 백업 파일
+*.bak
+*.swp
