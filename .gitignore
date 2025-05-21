@@ -24,6 +24,7 @@ dist/
 *.log
 logs/
 # 예외처리
+!logs/
 !logs/commit-log.txt
 
 # SQLite 데이터베이스
