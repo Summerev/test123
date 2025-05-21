@@ -7,6 +7,7 @@ AI 기반 법률 문서 해석 웹사이트
 - Django 웹 프레임워크 사용  
 
 ## 폴더구조
+```
 [프로젝트 폴더]/ # runserver시 이 폴더에서 'python legal_web/manage.py runserver'
 ├── [가상환경]/ # Python 가상환경 폴더 (각자 로컬에)
 ├── .github/workflows # workflows
@@ -30,3 +31,4 @@ AI 기반 법률 문서 해석 웹사이트
 ├── .gitattributes # 파일 처리
 ├── requirements.txt # 프로젝트 의존성 목록
 └── README.md # 프로젝트 설명 문서
+```
