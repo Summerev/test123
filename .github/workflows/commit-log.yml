@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir -p logs
           echo "==== New Push ====" >> logs/commit-log.txt
-          echo "Time: $(date '+%Y-%m-%d %H:%M:%S')" >> commit-log.txt
+          echo "Time: $(date '+%Y-%m-%d %H:%M:%S')" >> logs/commit-log.txt
           git log -1 --pretty=format:"Author: %an%nMessage: %s%nCommit: %H%n" >> logs/commit-log.txt
           echo "" >> logs/commit-log.txt
 
