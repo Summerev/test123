@@ -3,3 +3,8 @@ Author: grozovoi10
 Message: Update .gitignore
 Commit: f9acc8850d1e29b60ded94bd293829d95288277a
 
+==== New Push ====
+Author: grozovoi10
+Message: 초기 작업
+Commit: f1b50882fc3fddcfde5a2caeabb7cb8f16a4f2e3
+
