@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}LegalBot - 법률 AI 어시스턴트{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <aside class="sidebar">
+    <div class="menu-section">
+      <div class="menu-header" onclick="toggleMenu('recent-chats-content', this)">
+        <span data-translate-key="recentChatsMenu">💬 최근 대화</span>
+        <span class="menu-icon">▼</span>
+      </div>
+      <div class="menu-content" id="recent-chats-content">
+        <div class="recent-chats" id="recentChatsList"></div>
+      </div>
+    </div>
+
+    <div class="menu-section" id="interpretationModeSection">
+      <h4 class="sidebar-section-header" data-translate-key="interpretationModeLabel">해석 모드 선택</h4>
+      <div class="mode-options-sidebar">
+        <div>
+          <input type="radio" id="defaultModeSidebar" name="interpretationModeSidebar" value="default" />
+          <label for="defaultModeSidebar" data-translate-key="defaultModeLabel">기본 모드</label>
+        </div>
+        <div>
+          <input type="radio" id="easyModeSidebar" name="interpretationModeSidebar" value="easy" />
+          <label for="easyModeSidebar" data-translate-key="easyModeLabel">쉬운 해석 모드</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-action-buttons">
+      <button class="sidebar-btn-standalone" id="exportChatBtn">
+        <span class="btn-icon">📥</span>
+        <span data-translate-key="exportChatBtnText">대화 내보내기</span>
+      </button>
+      <button class="sidebar-btn-standalone" id="clearChatBtn">
+        <span class="btn-icon">🗑️</span>
+        <span data-translate-key="clearChatBtnText">대화 전체 삭제</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="chat-container">
+    <div class="chat-header">
+      <h2 data-translate-key="chatHeaderTitle">법률 AI 어시스턴트</h2>
+      <p data-translate-key="chatHeaderSubtitle">복잡한 법률 문서를 쉽게 이해하세요</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div id="welcomeMessage" class="welcome-message hidden">
+        <div class="welcome-icon">⚖️</div>
+        <h3 data-translate-key="welcomeTitle">안녕하세요! 법률 AI 어시스턴트입니다</h3>
+        <p data-translate-key="welcomeDesc">법률 문서의 복잡한 내용을 쉽게 설명해드립니다.</p>
+
+        <div class="example-prompts">
+          <div class="example-prompt" data-prompt-text="계약서 조항 설명해줘">
+            "계약서 조항 설명해줘"
+          </div>
+          <div class="example-prompt" data-prompt-text="노동법 관련 판례 찾아줘">
+            "노동법 관련 판례 찾아줘"
+          </div>
+          <div class="example-prompt" data-prompt-text="용역 계약서 작성 도와줘">
+            "용역 계약서 작성 도와줘"
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <textarea
+          class="chat-input"
+          id="chatInput"
+          placeholder="법률 문서나 조항을 입력하거나, 질문을 입력하세요..."
+          rows="1"
+          data-translate-key-placeholder="chatPlaceholder"
+        ></textarea>
+        <button class="send-button" id="sendButton" data-translate-key="sendButton">전송</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="info-panel">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span data-translate-key="aiStatus">AI 서비스 정상 운영중</span>
+    </div>
+
+    <div class="info-section">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        <span data-translate-key="usageTipsTitle">💡 사용 팁</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="collapsible-content">
+        <ul class="tip-list">
+          <li data-translate-key="tipCopyPaste">문서 전체를 복사해서 붙여넣기 하세요</li>
+          <li data-translate-key="tipSpecificQuestions">구체적인 질문일수록 정확한 답변을 받을 수 있어요</li>
+          <li data-translate-key="tipClauseFormat">"계약서이름 제X조" 형식으로 질문해보세요</li>
+          <li data-translate-key="tipEasierExplanation">이해가 안 되면 더 쉽게 설명해달라고 요청하세요</li>
+          <li>
+            <label class="toggle-switch-label">
+              <span data-translate-key="enterKeySettingLabel">Enter키로 전송</span>
+              <div class="toggle-switch">
+                <input type="checkbox" id="enterKeyToggle" />
+                <span class="slider"></span>
+              </div>
+            </label>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        <span data-translate-key="supportedDocsTitle">📄 지원 문서</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="collapsible-content">
+        <ul class="tip-list">
+          <li data-translate-key="docTypeContracts">계약서 (임대차, 근로, 매매, 용역 등)</li>
+          <li data-translate-key="docTypeTerms">이용약관 및 개인정보처리방침</li>
+          <li data-translate-key="docTypeLegalClauses">법률 조항 및 규정</li>
+          <li data-translate-key="docTypeOfficialDocs">공문서 및 신청서 (일부 조항 중심)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div class="collapsible-header" onclick="toggleCollapsible(this)">
+        <span data-translate-key="precautionsTitle">⚠️ 주의사항</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="collapsible-content">
+        <ul class="tip-list">
+          <li data-translate-key="precautionReferenceOnly">참고용으로만 활용해주세요</li>
+          <li data-translate-key="precautionConsultExpert">중요한 결정은 전문가와 상담하세요</li>
+          <li data-translate-key="precautionNoPersonalInfo">개인정보는 입력하지 마세요</li>
+          <li data-translate-key="aiDisclaimer">⚠️ 본 해석은 AI가 생성한 참고용 문장입니다. 법적 자문으로 간주하지 마십시오.</li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}

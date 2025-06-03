@@ -1,0 +1,54 @@
+<!-- signup.html (모달 전용) -->
+<div class="modal-overlay" id="signupModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('signupModal')">
+      &times;
+    </button>
+    <div class="modal-header">
+      <h3 data-translate-key="signupModalTitle">회원가입</h3>
+      <p data-translate-key="signupModalStart">LegalBot과 함께 시작하세요</p>
+    </div>
+
+    <form onsubmit="handleSignup(event)">
+      <div class="social-login">
+        <button type="button" class="social-btn" data-translate-key="googleSignup">Google</button>
+        <button type="button" class="social-btn" data-translate-key="kakaoSignup">Kakao</button>
+      </div>
+
+      <div class="divider">
+        <span data-translate-key="orDivider">또는</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="nameLabel">이름</label>
+        <input type="text" class="form-input" required placeholder="이름을 입력하세요"
+               data-translate-key-placeholder="namePlaceholder" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="emailLabel">이메일</label>
+        <input type="email" class="form-input" required placeholder="example@email.com"
+               data-translate-key-placeholder="emailPlaceholder" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="passwordLabel">비밀번호</label>
+        <input type="password" class="form-input" required placeholder="8자 이상 입력하세요"
+               data-translate-key-placeholder="passwordPlaceholderSignup" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="passwordConfirmLabel">비밀번호 확인</label>
+        <input type="password" class="form-input" required placeholder="비밀번호를 다시 입력하세요"
+               data-translate-key-placeholder="passwordConfirmPlaceholder" />
+      </div>
+
+      <button type="submit" class="form-submit" data-translate-key="signupButton">회원가입</button>
+    </form>
+
+    <div class="modal-footer">
+      <span data-translate-key="alreadyAccount">이미 계정이 있으신가요?</span>
+      <a href="#" onclick="switchModal('signupModal', 'loginModal')" data-translate-key="loginLink">로그인</a>
+    </div>
+  </div>
+</div>
