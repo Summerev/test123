@@ -1,0 +1,9 @@
+/* static/css/main.css */
+
+/* Import all other CSS files */
+@import url('base.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('chatbot.css');
+
+/* Optional: Add any global overrides or very minor styles here if absolutely necessary */
