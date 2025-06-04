@@ -1,0 +1,39 @@
+<main class="chat-container">
+  <div class="chat-header">
+    <h2 data-translate-key="chatHeaderTitle">법률 AI 어시스텐트</h2>
+    <p data-translate-key="chatHeaderSubtitle">보급한 법률 문서를 쉽게 이해하세요</p>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div id="welcomeMessage" class="welcome-message hidden">
+      <div class="welcome-icon">⚖️</div>
+      <h3 data-translate-key="welcomeTitle">안녕하세요! 법률 AI 어시스텐트입니다</h3>
+      <p data-translate-key="welcomeDesc">법률 문서의 보급한 내용을 쉽게 설명해드립니다.</p>
+
+      <div class="example-prompts">
+        <div class="example-prompt" data-prompt-text="계약서 조합 설명해줘">
+          "계약서 조합 설명해줘"
+        </div>
+        <div class="example-prompt" data-prompt-text="노동법 관련 판례 찾아줘">
+          "노동법 관련 판례 찾아줘"
+        </div>
+        <div class="example-prompt" data-prompt-text="용억 계약서 작성 도와줘">
+          "용억 계약서 작성 도와줘"
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-container">
+    <div class="chat-input-wrapper">
+      <textarea
+        class="chat-input"
+        id="chatInput"
+        placeholder="법률 문서나 조합을 입력하거나, 질문을 입력하세요..."
+        rows="1"
+        data-translate-key-placeholder="chatPlaceholder"
+      ></textarea>
+      <button class="send-button" id="sendButton" data-translate-key="sendButton">전송</button>
+    </div>
+  </div>
+</main>
