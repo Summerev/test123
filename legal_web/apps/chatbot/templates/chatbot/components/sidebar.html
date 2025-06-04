@@ -1,15 +1,18 @@
 <aside class="sidebar">
   <div class="menu-section">
-    <div class="menu-header" onclick="toggleMenu('recent-chats-content', this)">
+    <!-- onclick 속성 제거 -->
+    <div class="menu-header">
       <span data-translate-key="recentChatsMenu">💬 최근 대화</span>
       <span class="menu-icon">▼</span>
     </div>
+    <!-- id="recent-chats-content"와 id="recentChatsList"는 그대로 유지 -->
     <div class="menu-content" id="recent-chats-content">
       <div class="recent-chats" id="recentChatsList"></div>
     </div>
   </div>
 
   <div class="sidebar-action-buttons">
+    <!-- id="exportChatBtn"과 id="clearChatBtn"은 그대로 유지 -->
     <button class="sidebar-btn-standalone" id="exportChatBtn">
       <span class="btn-icon">📅</span>
       <span data-translate-key="exportChatBtnText">대화 내보내기</span>
