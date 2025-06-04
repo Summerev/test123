@@ -38,6 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'apps.main',
+    'apps.chatbot',
+    'apps.accounts',
+    'apps.admin_ui',
+    'apps.rag',
 ]
 
 MIDDLEWARE = [
@@ -52,10 +57,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+# 🔹 전역 base.html 및 각 앱 템플릿 모두 인식 가능하도록
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # 전역 base.html
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -118,10 +124,16 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
+# 🔹 정적 파일 설정: 전역 static/ + 각 앱 static 포함 가능
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
