@@ -1,61 +1,64 @@
-  <aside class="info-panel">
-    <div class="status-indicator">
-      <div class="status-dot"></div>
-      <span data-translate-key="aiStatus">AI 서비스 정상 운영중</span>
-    </div>
+<aside class="info-panel">
+  <div class="status-indicator">
+    <div class="status-dot"></div>
+    <span data-translate-key="aiStatus">AI 서비스 정상 운영중</span>
+  </div>
 
-    <div class="info-section">
-      <div class="collapsible-header" onclick="toggleCollapsible(this)">
-        <span data-translate-key="usageTipsTitle">💡 사용 팁</span>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div class="collapsible-content">
-        <ul class="tip-list">
-          <li data-translate-key="tipCopyPaste">문서 전체를 복사해서 붙여넣기 하세요</li>
-          <li data-translate-key="tipSpecificQuestions">구체적인 질문일수록 정확한 답변을 받을 수 있어요</li>
-          <li data-translate-key="tipClauseFormat">"계약서이름 제X조" 형식으로 질문해보세요</li>
-          <li data-translate-key="tipEasierExplanation">이해가 안 되면 더 쉽게 설명해달라고 요청하세요</li>
-          <li>
-            <label class="toggle-switch-label">
-              <span data-translate-key="enterKeySettingLabel">Enter키로 전송</span>
-              <div class="toggle-switch">
-                <input type="checkbox" id="enterKeyToggle" />
-                <span class="slider"></span>
-              </div>
-            </label>
-          </li>
-        </ul>
-      </div>
+  <div class="info-section">
+    <!-- onclick 속성 제거 -->
+    <div class="collapsible-header">
+      <span data-translate-key="usageTipsTitle">💡 사용 팁</span>
+      <span class="toggle-icon">▼</span>
     </div>
+    <div class="collapsible-content">
+      <ul class="tip-list">
+        <li data-translate-key="tipCopyPaste">문서 전체를 복사해서 붙여넣기 하세요</li>
+        <li data-translate-key="tipSpecificQuestions">구체적인 질문일수록 정확한 답변을 받을 수 있어요</li>
+        <li data-translate-key="tipClauseFormat">"계약서이름 제X조" 형식으로 질문해보세요</li>
+        <li data-translate-key="tipEasierExplanation">이해가 안 되면 더 쉽게 설명해달라고 요청하세요</li>
+        <li>
+          <label class="toggle-switch-label">
+            <span data-translate-key="enterKeySettingLabel">Enter키로 전송</span>
+            <div class="toggle-switch">
+              <!-- id="enterKeyToggle"은 그대로 유지 -->
+              <input type="checkbox" id="enterKeyToggle" />
+              <span class="slider"></span>
+            </div>
+          </label>
+        </li>
+      </ul>
+    </div>
+  </div>
 
-    <div class="info-section">
-      <div class="collapsible-header" onclick="toggleCollapsible(this)">
-        <span data-translate-key="supportedDocsTitle">📄 지원 문서</span>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div class="collapsible-content">
-        <ul class="tip-list">
-          <li data-translate-key="docTypeContracts">계약서 (임대차, 근로, 매매, 용역 등)</li>
-          <li data-translate-key="docTypeTerms">이용약관 및 개인정보처리방침</li>
-          <li data-translate-key="docTypeLegalClauses">법률 조항 및 규정</li>
-          <li data-translate-key="docTypeOfficialDocs">공문서 및 신청서 (일부 조항 중심)</li>
-        </ul>
-      </div>
+  <div class="info-section">
+    <!-- onclick 속성 제거 -->
+    <div class="collapsible-header">
+      <span data-translate-key="supportedDocsTitle">📄 지원 문서</span>
+      <span class="toggle-icon">▼</span>
     </div>
+    <div class="collapsible-content">
+      <ul class="tip-list">
+        <li data-translate-key="docTypeContracts">계약서 (임대차, 근로, 매매, 용역 등)</li>
+        <li data-translate-key="docTypeTerms">이용약관 및 개인정보처리방침</li>
+        <li data-translate-key="docTypeLegalClauses">법률 조항 및 규정</li>
+        <li data-translate-key="docTypeOfficialDocs">공문서 및 신청서 (일부 조항 중심)</li>
+      </ul>
+    </div>
+  </div>
 
-    <div class="info-section">
-      <div class="collapsible-header" onclick="toggleCollapsible(this)">
-        <span data-translate-key="precautionsTitle">⚠️ 주의사항</span>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div class="collapsible-content">
-        <ul class="tip-list">
-          <li data-translate-key="precautionReferenceOnly">참고용으로만 활용해주세요</li>
-          <li data-translate-key="precautionConsultExpert">중요한 결정은 전문가와 상담하세요</li>
-          <li data-translate-key="precautionNoPersonalInfo">개인정보는 입력하지 마세요</li>
-          <li data-translate-key="aiDisclaimer">⚠️ 본 해석은 AI가 생성한 참고용 문장입니다. 법적 자문으로 간주하지 마십시오.</li>
-        </ul>
-      </div>
+  <div class="info-section">
+    <!-- onclick 속성 제거 -->
+    <div class="collapsible-header">
+      <span data-translate-key="precautionsTitle">⚠️ 주의사항</span>
+      <span class="toggle-icon">▼</span>
     </div>
-  </aside>
-</div>
+    <div class="collapsible-content">
+      <ul class="tip-list">
+        <li data-translate-key="precautionReferenceOnly">참고용으로만 활용해주세요</li>
+        <li data-translate-key="precautionConsultExpert">중요한 결정은 전문가와 상담하세요</li>
+        <li data-translate-key="precautionNoPersonalInfo">개인정보는 입력하지 마세요</li>
+        <li data-translate-key="aiDisclaimer">⚠️ 본 해석은 AI가 생성한 참고용 문장입니다. 법적 자문으로 간주하지 마십시오.</li>
+      </ul>
+    </div>
+  </div>
+</aside>
