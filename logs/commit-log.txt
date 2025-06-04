@@ -19,3 +19,9 @@ Author: grozovoi10
 Message: Update commit-log.yml
 Commit: b3b6c74eda905c7c4e147af98419b80d60816e7c
 
+==== New Push ====
+Time: 2025-06-04 02:03:24
+Author: grozovoi10
+Message: 구조변경 적용
+Commit: 4ad6a273d885f41685bfbd2672315f050010bd5b
+
