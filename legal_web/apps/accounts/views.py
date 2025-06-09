@@ -13,6 +13,8 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from datetime import timedelta # timedelta 임포트 추가
+from django.utils import timezone # timezone 임포트 추가
 
 
 # 로컬 애플리케이션 임포트
@@ -30,10 +32,26 @@ def login_view(request):
         form = CustomAuthenticationForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            login(request, user)
+            
+            # 폼의 cleaned_data에서 remember_me 값을 가져옵니다.
+            # get('remember_me', False)는 remember_me 필드가 없거나 False이면 False를 반환합니다.
+            remember_me = form.cleaned_data.get('remember_me', False) 
+
+            login(request, user) # 먼저 로그인 처리
+
+            if remember_me:
+                # 30일 동안 세션 유지 (초 단위로 설정: 30일 * 24시간 * 60분 * 60초)
+                # settings.py의 SESSION_COOKIE_AGE보다 긴 시간을 설정할 수 있습니다.
+                request.session.set_expiry(60 * 60 * 24 * 30) 
+                print("Session set to 30 days expiry.") # 디버깅용
+            else:
+                # 브라우저 종료 시 세션 만료
+                # settings.py의 SESSION_EXPIRE_AT_BROWSER_CLOSE = True 와 동일하게 작동합니다.
+                request.session.set_expiry(0) 
+                print("Session set to expire at browser close.") # 디버깅용
+
             messages.success(request, f"{user.name}님, 안녕하세요!")
 
-            # AJAX 요청인 경우
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
@@ -44,20 +62,19 @@ def login_view(request):
                     }
                 })
 
-            # 일반 폼 제출인 경우
             next_url = request.GET.get('next', '/')
             return redirect(next_url)
         else:
-            # AJAX 요청인 경우 에러 반환
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 errors = {}
                 for field, error_list in form.errors.items():
+                    # 폼 오류 메시지를 더 깔끔하게 처리
                     errors[field] = error_list[0] if error_list else ""
                 return JsonResponse({
                     'success': False,
                     'errors': errors,
-                    'message': '로그인에 실패했습니다.'
-                })
+                    'message': '로그인에 실패했습니다. 입력값을 확인해주세요.' # 더 명확한 메시지
+                }, status=400) # Bad Request 상태 코드 추가
     else:
         form = CustomAuthenticationForm()
 
@@ -72,7 +89,8 @@ def signup_view(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # 회원가입 후 자동 로그인
+            # 회원가입 후 자동 로그인 시에는 로그인 유지 설정을 하지 않습니다.
+            # 필요하다면 여기에 기본 로그인 유지 설정을 추가할 수 있습니다.
             login(request, user)
             messages.success(request, f"{user.name}님, 회원가입을 환영합니다!")
 
@@ -116,6 +134,8 @@ def api_login(request):
         data = json.loads(request.body)
         email = data.get('email')
         password = data.get('password')
+        # remember_me 값을 JSON 데이터에서 가져옵니다.
+        remember_me = data.get('remember_me', False) 
 
         if not email or not password:
             return JsonResponse({
@@ -124,15 +144,11 @@ def api_login(request):
             })
 
         # 이메일로 사용자 찾기
-        # get_user_model()은 최상단에 임포트되었으므로 직접 호출하여 사용합니다.
-        # 변수 이름은 snake_case 규칙을 따르도록 'user_model'로 변경했습니다.
         user_model = get_user_model()
 
         try:
-            # email을 사용하여 사용자 객체 조회
             user_obj = user_model.objects.get(email=email)
 
-            # 인증 시도 시 user_obj.username을 사용
             authenticated_user = authenticate(
                 request,
                 username=user_obj.username,
@@ -140,6 +156,14 @@ def api_login(request):
             )
 
             if authenticated_user:
+                # remember_me 값에 따라 세션 만료 시간 설정
+                if remember_me:
+                    # 30일 동안 세션 유지
+                    request.session.set_expiry(60 * 60 * 24 * 30) 
+                else:
+                    # 브라우저 종료 시 세션 만료
+                    request.session.set_expiry(0) # 0 또는 False로 설정하면 브라우저 종료 시 만료
+
                 login(request, authenticated_user)
                 return JsonResponse({
                     'success': True,
@@ -167,7 +191,6 @@ def api_login(request):
             'error': '잘못된 요청 형식입니다.'
         })
     except Exception as e:
-        # "lazy % formatting"을 사용하여 로깅합니다.
         logger.error("Login API error: %s", str(e))
         return JsonResponse({
             'success': False,
@@ -213,6 +236,8 @@ def api_signup(request):
         if form.is_valid():
             user = form.save()
             # 회원가입 후 자동 로그인
+            # 회원가입 시에는 '로그인 유지' 옵션을 기본적으로 적용하지 않습니다.
+            # 필요하면 여기서 request.session.set_expiry(0) 또는 원하는 기간 설정 가능.
             login(request, user)
 
             return JsonResponse({
@@ -241,9 +266,6 @@ def api_signup(request):
             'error': '잘못된 요청 형식입니다.'
         })
     except Exception as e:
-        # "Catching too general exception Exception" 경고는 여전히 뜰 수 있지만,
-        # API의 최종 에러 핸들러로서는 용인되는 경우가 많습니다.
-        # 가장 중요한 것은 아래처럼 exc_info=True를 사용하여 상세한 스택 트레이스를 로깅하는 것입니다.
         logger.error("Signup API error: %s", e, exc_info=True)
         return JsonResponse({
             'success': False,
@@ -253,28 +275,44 @@ def api_signup(request):
 @csrf_exempt
 def logout_view(request):
     """
-    AJAX 또는 일반 요청에 따른 로그아웃 처리
+    로그아웃 처리
     """
-    if request.method != "POST":
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
-        return redirect('/')
-
+    # 사용자가 인증되었는지 먼저 확인
     if request.user.is_authenticated:
-        user_name = getattr(request.user, 'name', '사용자')
+        username = request.user.username # 로그아웃 전 사용자 이름 저장
         logout(request)
-        messages.success(request, f"{user_name}님, 로그아웃되었습니다.")
-
+        messages.info(request, f"{username}님, 로그아웃되었습니다.")
+        # AJAX 요청 처리
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True, 'message': '로그아웃되었습니다.'})
-        else:
-            return redirect('/')
+        # 일반 요청 처리
+        return redirect('/')
     else:
+        # 이미 로그아웃된 상태이거나 세션이 만료된 경우
+        messages.warning(request, "로그인 세션이 유효하지 않습니다. 다시 로그인해주세요.")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'error': '로그인된 사용자가 아닙니다.'}, status=401)
-        else:
-            return redirect('/accounts/login/')
+            # 401 Unauthorized 또는 403 Forbidden 상태 코드를 반환하여 클라이언트에게 세션이 없음을 알림
+            return JsonResponse({'success': False, 'message': '로그인 세션이 만료되었을 수 있습니다.'}, status=401)
+        return redirect('/') # 또는 로그인 페이지로 리디렉션
 
+def check_login_status(request):
+    """
+    현재 사용자의 로그인 상태를 JSON으로 반환하는 뷰
+    """
+    if request.user.is_authenticated:
+        # Custom User 모델에 'name' 필드가 있다고 가정합니다.
+        # 만약 'name' 필드가 없다면, request.user.username 이나 request.user.email 등을 사용하세요.
+        return JsonResponse({
+            'is_authenticated': True,
+            'user': {
+                'name': request.user.name if hasattr(request.user, 'name') else request.user.username,
+                'email': request.user.email,
+            }
+        })
+    else:
+        return JsonResponse({
+            'is_authenticated': False
+        })
 
 @login_required
 def profile_view(request):
