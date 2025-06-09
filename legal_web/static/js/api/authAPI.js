@@ -1,10 +1,24 @@
 // static/js/api/authAPI.js
+
 import { getTranslation } from '../data/translation.js';
 
-// Django CSRF 토큰 가져오기 함수
+// Django CSRF 토큰 가져오기 함수 (쿠키에서 가져오는 방식으로 수정)
 function getCsrfToken() {
-    const token = document.querySelector('[name=csrfmiddlewaretoken]');
-    return token ? token.value : '';
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    console.log('CSRF Token Value from cookie:', cookieValue); // 이 로그를 확인하세요
+    return cookieValue;
 }
 
 /**
@@ -17,13 +31,18 @@ export async function loginUser(email, password) {
     console.log('Login attempt:', email);
     
     try {
+        const csrfToken = getCsrfToken(); // CSRF 토큰 가져오기
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken; // CSRF 토큰이 있으면 헤더에 추가
+        }
+
         const response = await fetch('/accounts/api/login/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                // 'X-CSRFToken': getCsrfToken(), // CSRF 보호가 필요한 경우 주석 해제
-            },
+            headers: headers,
             body: JSON.stringify({
                 email: email,
                 password: password
@@ -31,13 +50,14 @@ export async function loginUser(email, password) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // 서버에서 에러 메시지가 있다면 파싱
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || response.statusText}`);
         }
         
         const data = await response.json();
         
         if (data.success) {
-            // 로그인 성공시 사용자 정보 저장 (선택사항)
             localStorage.setItem('user', JSON.stringify(data.user));
             
             return {
@@ -56,7 +76,7 @@ export async function loginUser(email, password) {
         console.error('Login API Error:', error);
         return {
             success: false,
-            error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.'
+            error: error.message || '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.'
         };
     }
 }
@@ -102,13 +122,18 @@ export async function signupUser(name, email, password, confirmPassword) {
     }
     
     try {
+        const csrfToken = getCsrfToken(); // CSRF 토큰 가져오기
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken; // CSRF 토큰이 있으면 헤더에 추가
+        }
+
         const response = await fetch('/accounts/api/signup/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                // 'X-CSRFToken': getCsrfToken(), // CSRF 보호가 필요한 경우 주석 해제
-            },
+            headers: headers,
             body: JSON.stringify({
                 name: name,
                 email: email,
@@ -118,13 +143,13 @@ export async function signupUser(name, email, password, confirmPassword) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+             const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || response.statusText}`);
         }
         
         const data = await response.json();
         
         if (data.success) {
-            // 회원가입 성공시 사용자 정보 저장 (선택사항)
             localStorage.setItem('user', JSON.stringify(data.user));
             
             return {
@@ -143,7 +168,7 @@ export async function signupUser(name, email, password, confirmPassword) {
         console.error('Signup API Error:', error);
         return {
             success: false,
-            error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.'
+            error: error.message || '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.'
         };
     }
 }
@@ -154,23 +179,31 @@ export async function signupUser(name, email, password, confirmPassword) {
  */
 export async function logoutUser() {
     try {
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            console.error("CSRF token not found in cookies. Cannot logout.");
+            return { success: false, error: "CSRF token missing for logout." };
+        }
+
         const response = await fetch('/accounts/logout/', {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCsrfToken(),
-            }
+                'X-CSRFToken': csrfToken, // CSRF 토큰을 헤더에 포함
+                'Content-Type': 'application/json' // Django가 body를 기대할 수도 있으므로 추가
+            },
+            body: JSON.stringify({}) // 빈 객체라도 보내는 것이 Django에 따라 필요할 수 있습니다.
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || response.statusText}`);
         }
         
         const data = await response.json();
         
         if (data.success) {
-            // 로컬 스토리지에서 사용자 정보 제거
-            localStorage.removeItem('user');
+            localStorage.removeItem('user'); // 로컬 스토리지에서 사용자 정보 제거
             
             return {
                 success: true,
@@ -187,7 +220,7 @@ export async function logoutUser() {
         console.error('Logout API Error:', error);
         return {
             success: false,
-            error: '서버 연결에 실패했습니다.'
+            error: error.message || '서버 연결에 실패했습니다.'
         };
     }
 }
