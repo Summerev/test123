@@ -83,9 +83,14 @@
     </div>
 
     <div class="auth-buttons">
-      <!-- id="loginBtn"과 id="signupBtn"은 그대로 유지 -->
-      <button class="btn-login" data-translate-key="login" id="loginBtn">로그인</button>
-      <button class="btn-signup" data-translate-key="signup" id="signupBtn">회원가입</button>
+      <a href="#" id="login-button" class="btn-login"
+        data-translate-key="loginButton">로그인</a>
+	  <a href="#" id="signup-button" class="btn-signup"
+        data-translate-key="signupButton">회원가입</a>
+	  <span id="user-display-name" class="user-info" style="display: none; margin-right: 10px;"></span>
+
+      <a href="#" id="logout-button" class="btn-signout" style="display: none;"
+        data-translate-key="logoutButton">로그아웃</a>
     </div>
   </nav>
 </header>

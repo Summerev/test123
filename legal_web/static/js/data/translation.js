@@ -72,6 +72,7 @@ const translations = {
     signupButton: '회원가입',
     alreadyAccount: '이미 계정이 있으신가요?',
     loginLink: '로그인',
+	logoutButton: '로그아웃',
     feedbackQuestion: '이 해석이 도움이 되었나요?',
     feedbackYes: '👍',
     feedbackNo: '👎',

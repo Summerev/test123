@@ -113,7 +113,7 @@
   color: var(--button-hover-text);
 }
 
-.btn-signup {
+.btn-signup, .btn-signout {
   background: var(--primary-accent);
   color: var(--primary-accent-text);
   text-decoration: none;
@@ -125,7 +125,8 @@
   cursor: pointer;
 }
 
-.btn-signup:hover {
+.btn-signup:hover,
+.btn-signout:hover {
   background: var(--primary-accent-darker);
   transform: translateY(-1px);
 }
