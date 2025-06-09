@@ -147,3 +147,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 AUTH_USER_MODEL = 'accounts.CustomUser' # '앱이름.모델이름' 형식
+
+
+# 세션 설정
+# 브라우저 종료 시 세션 만료 여부 (기본값: False)
+# '로그인 유지'를 체크하지 않았을 때 브라우저 종료 시 로그아웃되도록 하려면 True로 설정해야 합니다.
+# 이 값은 view에서 request.session.set_expiry(0) 또는 request.session.set_expiry(30 * 24 * 60 * 60)로 오버라이드할 수 있습니다.
+# 따라서, 기본값을 True로 설정하고, '로그인 유지' 시에만 명시적으로 30일로 설정하는 방식이 더 일반적입니다.
+# 여기서는 기본적으로 브라우저 종료 시 만료되도록 설정하고, '로그인 유지' 시에만 기간을 늘리겠습니다.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True # 로그인 유지 체크 안하면 브라우저 종료 시 로그아웃
+
+# 세션 쿠키 유효 기간 (초 단위). 30일 = 30 * 24 * 60 * 60 = 2592000
+# 이 값은 로그인 유지 체크 시 사용할 만료 기간입니다.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30 # 30일

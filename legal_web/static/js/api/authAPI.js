@@ -189,22 +189,25 @@ export async function logoutUser() {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': csrfToken, // CSRF 토큰을 헤더에 포함
-                'Content-Type': 'application/json' // Django가 body를 기대할 수도 있으므로 추가
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({}) // 빈 객체라도 보내는 것이 Django에 따라 필요할 수 있습니다.
+            body: JSON.stringify({}),
         });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || response.statusText}`);
+
+        const contentType = response.headers.get("content-type") || "";
+
+        // 응답이 HTML이라면 로그인 페이지로 리디렉션되었을 가능성
+        if (!response.ok || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.warn("Logout response was not JSON:", text.slice(0, 200));
+            throw new Error("서버 응답이 올바르지 않습니다. 로그인 세션이 만료되었을 수 있습니다.");
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-            localStorage.removeItem('user'); // 로컬 스토리지에서 사용자 정보 제거
-            
+            localStorage.removeItem('user');
             return {
                 success: true,
                 message: data.message
@@ -215,7 +218,7 @@ export async function logoutUser() {
                 error: '로그아웃에 실패했습니다.'
             };
         }
-        
+
     } catch (error) {
         console.error('Logout API Error:', error);
         return {

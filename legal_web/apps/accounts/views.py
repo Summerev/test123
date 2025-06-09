@@ -250,24 +250,30 @@ def api_signup(request):
             'error': '서버 오류가 발생했습니다.'
         })
 
-
-@login_required
+@csrf_exempt
 def logout_view(request):
     """
-    로그아웃 처리
+    AJAX 또는 일반 요청에 따른 로그아웃 처리
     """
-    user_name = request.user.name
-    logout(request)
-    messages.success(request, f"{user_name}님, 로그아웃되었습니다.")
+    if request.method != "POST":
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+        return redirect('/')
 
-    # AJAX 요청인 경우
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'message': '로그아웃되었습니다.'
-        })
+    if request.user.is_authenticated:
+        user_name = getattr(request.user, 'name', '사용자')
+        logout(request)
+        messages.success(request, f"{user_name}님, 로그아웃되었습니다.")
 
-    return redirect('/')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '로그아웃되었습니다.'})
+        else:
+            return redirect('/')
+    else:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': '로그인된 사용자가 아닙니다.'}, status=401)
+        else:
+            return redirect('/accounts/login/')
 
 
 @login_required
