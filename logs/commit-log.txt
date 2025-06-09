@@ -55,3 +55,9 @@ Author: grozovoi10
 Message: Merge pull request #4 from PROJECTLAW5/db
 Commit: 5320b1ab8e1ed4c80628d782b492a6dded10a2ee
 
+==== New Push ====
+Time: 2025-06-09 07:14:06
+Author: grozovoi10
+Message: 로그아웃
+Commit: aaaa2c52e3da62c09a06f22aaedfd5c00f759019
+
