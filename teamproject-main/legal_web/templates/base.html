@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}LegalBot - 법률 AI 어시스턴트{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.png' %}" type="image/png" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    <form style="display:none;">{% csrf_token %}</form>
+
+    {% block navbar %}
+      {% include "main/components/navbar.html" %}
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {% block modals %}
+      {% include "accounts/login.html" %}
+      {% include "accounts/signup.html" %}
+      {% include "chatbot/components/feedback_modal.html" %}
+    {% endblock %}
+
+    {% block footer %}
+      {% include "main/components/footer.html" %}
+    {% endblock %}
+
+    <script type="module" src="{% static 'js/main.js' %}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
