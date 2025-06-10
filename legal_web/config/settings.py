@@ -15,6 +15,7 @@ import os
 from dotenv import load_dotenv
 
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,7 +30,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key-if-not-set")
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = []
+# DEBUG가 False일 때, Django 애플리케이션이 응답할 수 있는 호스트를 정의. 개발 환경에서는 'localhost'와 '127.0.0.1'을 포함.
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'debug_toolbar',
     'apps.main',
     'apps.chatbot',
     'apps.accounts',
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware', # 디버그 툴바
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -57,6 +61,21 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+INTERNAL_IPS = [
+    "127.0.0.1", # 디버그 툴바는 INTERNAL_IPS에 지정된 주소에서 표시
+    # "192.168.1.100", # 만약 다른 기기에서 접근할 경우 해당 IP도 추가
+]
+
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": lambda request: True, # 모든 요청에 툴바 표시 (임시)
+    "INTERCEPT_REDIRECTS": True,
+    "ENABLE_STACKTRACES": True,
+    "RESULTS_CACHE_SIZE": 100,
+    "SHOW_PRIVATE_PROFILERS": True,
+    "ROOT_TAG_ATTRS": 'class="dbt"',
+    "AJAX_REQUESTS": True,
+}
 
 ROOT_URLCONF = 'config.urls'
 
@@ -134,8 +153,12 @@ USE_TZ = False
 # 🔹 정적 파일 설정: 전역 static/ + 각 앱 static 포함 가능
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    os.path.join(BASE_DIR, 'static'), # main.js가 프로젝트 루트의 static 폴더에 있다면 이 경로가 있어야 합니다.
+    # 다른 앱의 static 폴더가 있다면 추가
 ]
+
+# collectstatic 명령어가 정적 파일을 모을 최종 경로 (DEBUG=False일 때 Nginx/Apache 등 웹 서버가 서빙)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # 최종 모아질 디렉토리
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -149,14 +172,43 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.CustomUser' # '앱이름.모델이름' 형식
 
 
-# 세션 설정
-# 브라우저 종료 시 세션 만료 여부 (기본값: False)
-# '로그인 유지'를 체크하지 않았을 때 브라우저 종료 시 로그아웃되도록 하려면 True로 설정해야 합니다.
-# 이 값은 view에서 request.session.set_expiry(0) 또는 request.session.set_expiry(30 * 24 * 60 * 60)로 오버라이드할 수 있습니다.
-# 따라서, 기본값을 True로 설정하고, '로그인 유지' 시에만 명시적으로 30일로 설정하는 방식이 더 일반적입니다.
-# 여기서는 기본적으로 브라우저 종료 시 만료되도록 설정하고, '로그인 유지' 시에만 기간을 늘리겠습니다.
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True # 로그인 유지 체크 안하면 브라우저 종료 시 로그아웃
+# 세션 관련 설정
+# 브라우저가 닫힐 때 세션 쿠키가 만료되도록 설정
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-# 세션 쿠키 유효 기간 (초 단위). 30일 = 30 * 24 * 60 * 60 = 2592000
-# 이 값은 로그인 유지 체크 시 사용할 만료 기간입니다.
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 30 # 30일
+"""
+# 로그인 로거
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': { # Django 자체 로그 (HTTP 요청 등)
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.accounts': { # <--- 이 부분이 중요합니다. apps/accounts/views.py의 로거
+            'handlers': ['console'],
+            'level': 'DEBUG', # 반드시 DEBUG 또는 INFO로 설정해야 합니다.
+            'propagate': False,
+        },
+        # 다른 앱의 로거가 있다면 여기에 추가
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING', # 기본 루트 로거 레벨
+    },
+}
+"""

@@ -25,10 +25,11 @@ function getCsrfToken() {
  * Django 백엔드 로그인 API 호출
  * @param {string} email - User's email.
  * @param {string} password - User's password.
+ * @param {boolean} rememberMe - Whether to keep the user logged in for 30 days.
  * @returns {Promise<object>} A Promise containing the login response data.
  */
-export async function loginUser(email, password) {
-    console.log('Login attempt:', email);
+export async function loginUser(email, password, rememberMe) { // rememberMe 매개변수 추가
+    console.log('Login attempt:', email, 'Remember Me:', rememberMe); // 디버깅 로그 추가
     
     try {
         const csrfToken = getCsrfToken(); // CSRF 토큰 가져오기
@@ -45,7 +46,8 @@ export async function loginUser(email, password) {
             headers: headers,
             body: JSON.stringify({
                 email: email,
-                password: password
+                password: password,
+                remember_me: rememberMe // remember_me 값 추가
             })
         });
         

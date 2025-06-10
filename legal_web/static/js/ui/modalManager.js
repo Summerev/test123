@@ -48,47 +48,6 @@ export function switchModal(currentModalId, targetModalId) {
     setTimeout(() => openModal(targetModalId), 150); // Small delay for animation
 }
 
-/**
- * Handles the submission of the login form.
- * @param {Event} event - The form submission event.
- */
-export async function handleLogin(event) {
-    event.preventDefault();
-    const form = event.target;
-    const email = form.elements.email.value;
-    const password = form.elements.password.value;
-
-    const result = await loginUser(email, password); // Call authAPI
-
-    if (result.success) {
-        alert('로그인 성공!'); // Replace with better UI feedback
-        closeModal('loginModal');
-    } else {
-        alert(result.error || getTranslation('alertLoginNotImplemented')); // Display error message
-    }
-}
-
-/**
- * Handles the submission of the signup form.
- * @param {Event} event - The form submission event.
- */
-export async function handleSignup(event) {
-    event.preventDefault();
-    const form = event.target;
-    const name = form.elements.name.value;
-    const email = form.elements.email.value;
-    const password = form.elements.password.value;
-    const confirmPassword = form.elements.confirmPassword.value;
-
-    const result = await signupUser(name, email, password, confirmPassword); // Call authAPI
-
-    if (result.success) {
-        alert('회원가입 성공!'); // Replace with better UI feedback
-        closeModal('signupModal');
-    } else {
-        alert(result.error || getTranslation('alertSignupNotImplemented')); // Display error message
-    }
-}
 
 /**
  * Initializes modal-related event listeners.
@@ -119,12 +78,6 @@ export function initModals() {
     if (loginBtn) on(loginBtn, 'click', () => openModal('loginModal'));
     if (signupBtn) on(signupBtn, 'click', () => openModal('signupModal'));
 
-    // Connect login/signup form submissions
-    const loginForm = $('#loginForm');
-    const signupForm = $('#signupForm');
-
-    if (loginForm) on(loginForm, 'submit', handleLogin);
-    if (signupForm) on(signupForm, 'submit', handleSignup);
 
     // Connect modal switch links (e.g., "Don't have an account? Sign Up")
     const noAccountLink = $('#noAccountLink');

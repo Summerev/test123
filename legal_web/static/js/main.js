@@ -3,8 +3,10 @@
 // Import utilities
 import { $, $$, on } from './utils/domHelpers.js';
 
-// **authAPI.js 임포트 추가**
-import { loginUser, signupUser, logoutUser, getCurrentUser, isLoggedIn } from './api/authAPI.js'; 
+// **authAPI.js 임포트 수정 (getCurrentUser, isLoggedIn 제거)**
+// authAPI.js에서 더 이상 로컬 스토리지를 사용하지 않도록 수정되었다고 가정합니다.
+// 이제 loginUser, signupUser, logoutUser만 필요합니다.
+import { loginUser, signupUser, logoutUser } from './api/authAPI.js'; 
 
 // Import data management modules
 import {
@@ -40,37 +42,35 @@ const interpretationModeRadios = $$('input[name="interpretationModeSidebar"]');
 const feedbackForm = $('#feedbackForm');
 const recentChatsList = $('#recentChatsList');
 
-// **로그인/회원가입/로그아웃 관련 DOM 요소 참조 추가**
-const loginForm = $('#loginForm'); // login.html의 폼 ID
-const signupForm = $('#signupForm'); // signup.html의 폼 ID
-// const loginModal = $('#loginModal'); // 더 이상 직접적인 DOM 요소 참조는 불필요 - ID 문자열로 직접 사용
-// const signupModal = $('#signupModal'); // 더 이상 직접적인 DOM 요소 참조는 불필요 - ID 문자열로 직접 사용
-const noAccountLink = $('#noAccountLink'); // login.html의 회원가입 링크 ID
-const alreadyAccountLink = $('#alreadyAccountLink'); // signup.html의 로그인 링크 ID
+// 로그인/회원가입/로그아웃 관련 DOM 요소 참조
+const loginForm = $('#loginForm');
+const signupForm = $('#signupForm');
+const noAccountLink = $('#noAccountLink');
+const alreadyAccountLink = $('#alreadyAccountLink');
 
-// **Navbar 인증 관련 요소들** (navbar.html에 ID를 부여해야 합니다!)
-const navLoginButton = $('#login-button');      // 내비게이션 바의 '로그인' 버튼
-const navSignupButton = $('#signup-button');    // 내비게이션 바의 '회원가입' 버튼
-const navLogoutButton = $('#logout-button');    // 내비게이션 바의 '로그아웃' 버튼 (새로 추가)
-const navUserDisplayName = $('#user-display-name'); // 내비게이션 바의 사용자 이름 표시 요소 (새로 추가)
+// Navbar 인증 관련 요소들
+const navLoginButton = $('#login-button');
+const navSignupButton = $('#signup-button');
+const navLogoutButton = $('#logout-button');
+const navUserDisplayName = $('#user-display-name');
 
+// 로그인 유지 체크박스
+const rememberMeCheckbox = $('#rememberMe'); 
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initial Setup and State Loading
-    applyTranslations(); // Apply UI text translations first
-    initThemeToggle(); // Initialize theme toggle and apply saved theme
+    applyTranslations();
+    initThemeToggle();
 
-    // Initialize interpretation mode radio buttons based on saved state
     const defaultModeRadio = $('#defaultModeSidebar');
     const easyModeRadio = $('#easyModeSidebar');
     if (getCurrentInterpretationMode() === 'easy' && easyModeRadio) {
         easyModeRadio.checked = true;
     } else if (defaultModeRadio) {
         defaultModeRadio.checked = true;
-        setInterpretationMode('default'); // Ensure default mode is explicitly set if no 'easy' preference
+        setInterpretationMode('default');
     }
 
-    // Initialize Enter key send setting
     if (enterKeyToggle) {
         enterKeyToggle.checked = getEnterKeySends();
     }
@@ -78,24 +78,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Initialize UI Components
     initDropdowns();
     initCollapsibles();
-    initModals(); // Initialize modal-related event listeners
-    initChatInputAutoResize(); // Auto-resize chat input field
-    initExamplePrompts(); // Example prompt click events
+    initModals();
+    initChatInputAutoResize();
+    initExamplePrompts();
 
     // 3. Load Chat History and Recent Chats
-    loadChatHistoryFromStorage(); // Load and display chat messages
-    loadRecentChats(); // Load recent chat titles in sidebar
+    loadChatHistoryFromStorage();
+    loadRecentChats();
 
     // -------------------------------------------------------------
-    // **새로 추가/수정된 부분: 로그인/회원가입/로그아웃 로직 및 UI 업데이트**
+    // **수정된 부분: 로그인/회원가입/로그아웃 로직 및 UI 업데이트**
     // -------------------------------------------------------------
+
+    // 초기 페이지 로드 시 로그인 상태를 서버에서 확인하여 UI 업데이트
+    updateAuthUI();
 
     // 로그인 버튼 클릭 이벤트 리스너 (Navbar)
     if (navLoginButton) {
         on(navLoginButton, 'click', (event) => {
-            event.preventDefault(); // 기본 링크 동작 방지
+            event.preventDefault();
             console.log("Navbar Login button clicked. Opening login modal.");
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             openModal('loginModal'); 
         });
     }
@@ -103,70 +105,96 @@ document.addEventListener('DOMContentLoaded', () => {
     // 회원가입 버튼 클릭 이벤트 리스너 (Navbar)
     if (navSignupButton) {
         on(navSignupButton, 'click', (event) => {
-            event.preventDefault(); // 기본 링크 동작 방지
+            event.preventDefault();
             console.log("Navbar Signup button clicked. Opening signup modal.");
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             openModal('signupModal'); 
         });
     }
 
-    // 로그인 폼 제출 이벤트 리스너
-    if (loginForm) {
-        on(loginForm, 'submit', async (event) => {
-            event.preventDefault();
-            const email = loginForm.elements.email.value;
-            const password = loginForm.elements.password.value;
+// 로그인 폼 제출 이벤트 리스너
+if (loginForm) {
+	on(loginForm, 'submit', async (event) => {
+		event.preventDefault();
 
-            console.log('Attempting login with:', email); // 디버깅 로그 추가
-            const result = await loginUser(email, password);
+		// 👇 이 부분도 querySelector로 변경합니다.
+		const emailInput = loginForm.querySelector('input[name="email"]');
+		const passwordInput = loginForm.querySelector('input[name="password"]');
 
-            if (result.success) {
-                alert(result.message);
-                // 로그인 성공 시 UI 업데이트 후 모달 닫기
-                updateAuthUI(); 
-                // 오류 수정: 모달의 ID 문자열을 직접 전달
-                closeModal('loginModal'); 
-            } else {
-                alert(result.error);
-                console.error('로그인 실패:', result.error);
-            }
-        });
-    }
+		// 요소가 제대로 찾아졌는지 확인하는 방어 코드
+		if (!emailInput) {
+			console.error("Error: Login form email input not found with name='email'.");
+			alert("이메일 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+			return;
+		}
+		if (!passwordInput) {
+			console.error("Error: Login form password input not found with name='password'.");
+			alert("비밀번호 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+			return;
+		}
 
-    // 회원가입 폼 제출 이벤트 리스너
-    if (signupForm) {
-        on(signupForm, 'submit', async (event) => {
-            event.preventDefault();
-            const name = signupForm.elements.name.value;
-            const email = signupForm.elements.email.value;
-            const password = signupForm.elements.password.value;
-            // HTML 폼의 필드 이름이 'confirm_password'인지 'confirmPassword'인지 확인하세요.
-            // 여기서는 'confirmPassword'로 가정합니다.
-            const confirmPassword = signupForm.elements.confirmPassword.value; 
+		const email = emailInput.value;
+		const password = passwordInput.value;
+		const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
 
-            console.log('Attempting signup with:', name, email); // 디버깅 로그 추가
-            const result = await signupUser(name, email, password, confirmPassword);
+		console.log('Attempting login with:', email, 'Remember Me:', rememberMe);
+		const result = await loginUser(email, password, rememberMe);
 
-            if (result.success) {
-                alert(result.message);
-                // 회원가입 성공 시 UI 업데이트 후 모달 닫기
-                updateAuthUI(); 
-                // 오류 수정: 모달의 ID 문자열을 직접 전달
-                closeModal('signupModal'); 
-            } else {
-                alert(result.error);
-                console.error('회원가입 실패:', result.error);
-            }
-        });
-    }
+		// 👇 이 부분이 핵심입니다! 로그인 성공 시 UI 업데이트 및 모달 닫기
+		if (result.success) {
+			alert(result.message); // 로그인 성공 메시지 표시
+			updateAuthUI(); // UI 업데이트 함수 호출 (로그인 상태 반영)
+			closeModal('loginModal'); // 로그인 모달 닫기
+			loginForm.reset(); // 폼 필드 초기화 (선택 사항이지만 좋은 사용자 경험 제공)
+		} else {
+			alert(result.error); // 로그인 실패 메시지 표시
+			console.error('로그인 실패:', result.error);
+		}
+	});
+}
+
+// 회원가입 폼 제출 이벤트 리스너
+if (signupForm) {
+    on(signupForm, 'submit', async (event) => {
+        event.preventDefault();
+
+        // 👇 이 부분을 수정합니다. (signupForm.elements 대신 querySelector 사용)
+        const nameInput = signupForm.querySelector('input[name="name"]');
+        const emailInput = signupForm.querySelector('input[name="email"]');
+        const passwordInput = signupForm.querySelector('input[name="password"]');
+        const confirmPasswordInput = signupForm.querySelector('input[name="confirmPassword"]');
+
+        // 요소가 제대로 찾아졌는지 확인하는 방어 코드 (매우 중요)
+        if (!nameInput || !emailInput || !passwordInput || !confirmPasswordInput) {
+            console.error("Error: One or more signup form input fields not found.");
+            alert("회원가입 폼 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+            return; // 함수 실행 중단
+        }
+
+        const name = nameInput.value;
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        console.log('Attempting signup with:', name, email);
+        const result = await signupUser(name, email, password, confirmPassword);
+
+        if (result.success) {
+            alert(result.message);
+            updateAuthUI();
+            closeModal('signupModal');
+            signupForm.reset();
+        } else {
+            alert(result.error);
+            console.error('회원가입 실패:', result.error);
+        }
+    });
+}
 
     // 모달 전환 링크 이벤트 리스너 (로그인 -> 회원가입)
     if (noAccountLink) {
         on(noAccountLink, 'click', (e) => {
             e.preventDefault();
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             closeModal('loginModal'); 
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             openModal('signupModal'); 
         });
     }
@@ -175,28 +203,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (alreadyAccountLink) {
         on(alreadyAccountLink, 'click', (e) => {
             e.preventDefault();
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             closeModal('signupModal'); 
-            // 오류 수정: 모달의 ID 문자열을 직접 전달
             openModal('loginModal'); 
         });
     }
 
-    // 초기 페이지 로드 시 및 로그인/로그아웃 성공 시 UI 업데이트 함수
-    function updateAuthUI() {
-        const currentUser = getCurrentUser(); // authAPI.js의 getCurrentUser 호출
+    /**
+     * 서버에 로그인 상태를 질의하여 UI를 업데이트하는 함수
+     */
+    async function updateAuthUI() {
+        try {
+            // 서버에 로그인 상태를 문의하는 API 호출
+            const response = await fetch('/accounts/check_login_status/');
+            const data = await response.json();
 
-        if (isLoggedIn()) {
-            // 로그인 상태: 로그인/회원가입 버튼 숨기고, 로그아웃 버튼과 사용자 이름 표시
-            if (navLoginButton) navLoginButton.style.display = 'none';
-            if (navSignupButton) navSignupButton.style.display = 'none';
-            if (navLogoutButton) navLogoutButton.style.display = 'block'; // 로그아웃 버튼을 보이게
-            if (navUserDisplayName && currentUser) {
-                navUserDisplayName.textContent = `${currentUser.name}님`; // 사용자 이름 표시
-                navUserDisplayName.style.display = 'inline-block';
+            if (data.is_authenticated) {
+                // 로그인 상태
+                if (navLoginButton) navLoginButton.style.display = 'none';
+                if (navSignupButton) navSignupButton.style.display = 'none';
+                if (navLogoutButton) navLogoutButton.style.display = 'block'; 
+                if (navUserDisplayName && data.user) { // 서버에서 user 정보도 같이 받아옴
+                    navUserDisplayName.textContent = `${data.user.name}님`; 
+                    navUserDisplayName.style.display = 'inline-block';
+                }
+                // 로그인 모달이 열려있다면 닫기 (자동 로그인 상태일 경우)
+                const loginModalElem = $('#loginModal');
+                if (loginModalElem && loginModalElem.style.display === 'block') {
+                    closeModal('loginModal');
+                }
+
+            } else {
+                // 로그아웃 상태
+                if (navLoginButton) navLoginButton.style.display = 'block';
+                if (navSignupButton) navSignupButton.style.display = 'block';
+                if (navLogoutButton) navLogoutButton.style.display = 'none';
+                if (navUserDisplayName) {
+                    navUserDisplayName.style.display = 'none';
+                    navUserDisplayName.textContent = '';
+                }
             }
-        } else {
-            // 로그아웃 상태: 로그인/회원가입 버튼 보이고, 로그아웃 버튼과 사용자 이름 숨김
+        } catch (error) {
+            console.error('로그인 상태 확인 실패:', error);
+            // 네트워크 오류 등으로 서버와 통신 실패 시 로그아웃 상태로 처리
             if (navLoginButton) navLoginButton.style.display = 'block';
             if (navSignupButton) navSignupButton.style.display = 'block';
             if (navLogoutButton) navLogoutButton.style.display = 'none';
@@ -207,9 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    updateAuthUI(); // DOMContentLoaded 시점에 UI 업데이트 함수 호출
-
-    // 로그아웃 버튼 이벤트 리스너 (navbar.html에 로그아웃 버튼이 추가되면 활성화)
+    // 로그아웃 버튼 이벤트 리스너
     if (navLogoutButton) {
         on(navLogoutButton, 'click', async (event) => {
             event.preventDefault();
@@ -217,26 +263,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 alert(result.message);
                 updateAuthUI(); // 로그아웃 후 UI 업데이트
-                // 페이지 새로고침은 선택 사항입니다.
-                // window.location.reload(); 
             } else {
-                alert(result.error);
+                // 서버에서 '세션 만료' 등의 에러를 반환했을 경우
+                alert(result.error); 
+                console.error('로그아웃 실패:', result.error);
+                updateAuthUI(); // 혹시라도 서버와의 상태가 다를 수 있으니 UI 강제 업데이트
             }
         });
     }
 
     // -------------------------------------------------------------
-    // 4. Connect Main Event Listeners (기존 코드)
+    // 4. Connect Main Event Listeners (기존 코드 유지)
     // -------------------------------------------------------------
 
-    // Chat input and send functionality
     if (sendButton) {
         on(sendButton, 'click', () => {
             if (chatInput && chatInput.value.trim()) {
                 processUserMessage(chatInput.value.trim());
-                chatInput.value = ''; // Clear input
-                chatInput.style.height = 'auto'; // Reset height
-                sendButton.disabled = true; // Disable button
+                chatInput.value = '';
+                chatInput.style.height = 'auto';
+                sendButton.disabled = true;
             }
         });
     }
@@ -244,17 +290,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chatInput) {
         on(chatInput, 'keypress', (e) => {
             if (getEnterKeySends() && e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Prevent newline
-                sendButton.click(); // Trigger send button click
+                e.preventDefault();
+                sendButton.click();
             }
         });
     }
 
-    // Sidebar "Export Conversation" button
     if (exportChatButton) {
         on(exportChatButton, 'click', () => {
             if (getChatHistory().length === 0) {
-                alert(getTranslation('noRecentChats')); // Use custom modal instead of alert
+                alert(getTranslation('noRecentChats'));
                 return;
             }
             const formattedChat = getChatHistory()
@@ -276,13 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
         exportChatButton.title = getTranslation('exportChatTooltip');
     }
 
-    // Sidebar "Clear All Chats" button
     if (clearChatButton) {
         on(clearChatButton, 'click', clearAllChats);
         clearChatButton.title = getTranslation('clearChatTooltip');
     }
 
-    // Interpretation mode radio buttons change event
     interpretationModeRadios.forEach((radio) => {
         on(radio, 'change', function () {
             if (this.checked) {
@@ -291,48 +334,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Enter key send toggle switch change event
     if (enterKeyToggle) {
         on(enterKeyToggle, 'change', function () {
             setEnterKeySends(this.checked);
-        }
-        );
+        });
     }
 
-    // Feedback buttons (👍/👎) event delegation on chat messages container
     on($('#chatMessages'), 'click', (e) => {
         if (e.target.classList.contains('feedback-yes') || e.target.classList.contains('feedback-no')) {
             handleFeedbackClick(e);
         }
     });
 
-    // Feedback form submission
     if (feedbackForm) {
         on(feedbackForm, 'submit', handleFeedbackSubmit);
     }
 
-    // Custom event listener for language change (dispatched from dropdowns.js)
     on(document, 'languageChanged', (e) => {
-        changeLanguage(e.detail.lang); // Update language state and apply translations
-        loadChatHistoryFromStorage(); // Reload chat messages to apply new language
-        loadRecentChats(); // Reload recent chats list to apply new language
+        changeLanguage(e.detail.lang);
+        loadChatHistoryFromStorage();
+        loadRecentChats();
     });
 
-    // Event delegation for recent chat items click (to load specific chat)
     on(recentChatsList, 'click', (e) => {
         const chatItem = e.target.closest('.chat-item');
         if (chatItem && !chatItem.classList.contains('no-chats-item')) {
-            const fullText = chatItem.title; // Get full text from title attribute
+            const fullText = chatItem.title;
             if (chatInput) {
                 chatInput.value = fullText;
                 chatInput.focus();
                 sendButton.disabled = false;
-                chatInput.dispatchEvent(new Event('input')); // Trigger input event for auto-resize
+                chatInput.dispatchEvent(new Event('input'));
             }
-            // In a real app, you would load the full conversation history for this chatId
-            // const chatId = chatItem.dataset.chatId;
-            // alert(`Chat ID: ${chatId} load functionality needs to be implemented.`);
-            // loadSpecificChat(chatId);
         }
     });
 });
