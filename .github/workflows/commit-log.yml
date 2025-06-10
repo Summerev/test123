@@ -1,0 +1,38 @@
+name: Log Commits
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  log-commit-info:
+    if: "!contains(github.event.head_commit.message, '[bot]')"  # 반복 방지 조건
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions@github.com"
+
+      - name: Extract commit info
+        run: |
+          mkdir -p logs
+          echo "==== New Push ====" >> logs/commit-log.txt
+          echo "Time: $(date '+%Y-%m-%d %H:%M:%S')" >> logs/commit-log.txt
+          git log -1 --pretty=format:"Author: %an%nMessage: %s%nCommit: %H%n" >> logs/commit-log.txt
+          echo "" >> logs/commit-log.txt
+
+      - name: Commit and push log file
+        run: |
+          git add logs/commit-log.txt
+          git commit -m "Update logs/commit-log.txt [bot]" || echo "No changes to commit"
+          git push

@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}LegalBot - 법률 AI 어시스턴트{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.png' %}" type="image/png" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    {% block extra_head %}{% endblock %}
+    <style>
+      .right-sidebar {
+        position: fixed;
+        top: 120px;
+        right: 20px;
+        width: 180px;
+        background: #f9f9f9;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 1000;
+        border-radius: 10px;
+      }
+      .right-sidebar ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .right-sidebar li {
+        margin-bottom: 10px;
+      }
+      .right-sidebar button {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        border: none;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      .right-sidebar button:hover {
+        background: #efefef;
+      }
+    </style>
+  </head>
+  <body>
+    <form style="display:none;">{% csrf_token %}</form>
+
+    {% block navbar %}
+      {% include "main/components/navbar.html" %}
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {% block modals %}
+      {% include "accounts/login.html" %}
+      {% include "accounts/signup.html" %}
+      {% include "chatbot/components/feedback_modal.html" %}
+
+      <!-- 💡 사용 팁 모달 -->
+      <div class="modal-overlay" id="usageTipsModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 data-translate-key="usageTipsTitle">💡 사용 팁</h3>
+            <button class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <ul class="tip-list">
+              <li data-translate-key="tipCopyPaste">문서 전체를 복사해서 붙여넣기 하세요</li>
+              <li data-translate-key="tipSpecificQuestions">구체적인 질문일수록 정확한 답변을 받을 수 있어요</li>
+              <li data-translate-key="tipClauseFormat">"계약서이름 제X조" 형식으로 질문해보세요</li>
+              <li data-translate-key="tipEasierExplanation">이해가 안 되면 더 쉽게 설명해달라고 요청하세요</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📄 지원 문서 모달 -->
+      <div class="modal-overlay" id="supportDocsModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 data-translate-key="supportedDocsTitle">📄 지원 문서</h3>
+            <button class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <ul class="tip-list">
+              <li data-translate-key="docTypeContracts">계약서 (임대차, 근로, 매매, 용역 등)</li>
+              <li data-translate-key="docTypeTerms">이용약관 및 개인정보처리방침</li>
+              <li data-translate-key="docTypeLegalClauses">법률 조항 및 규정</li>
+              <li data-translate-key="docTypeOfficialDocs">공문서 및 신청서 (일부 조항 중심)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⚠️ 주의사항 모달 -->
+      <div class="modal-overlay" id="precautionsModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 data-translate-key="precautionsTitle">⚠️ 주의사항</h3>
+            <button class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <ul class="tip-list">
+              <li data-translate-key="precautionReferenceOnly">참고용으로만 활용해주세요</li>
+              <li data-translate-key="precautionConsultExpert">중요한 결정은 전문가와 상담하세요</li>
+              <li data-translate-key="precautionNoPersonalInfo">개인정보는 입력하지 마세요</li>
+              <li data-translate-key="aiDisclaimer">⚠️ 본 해석은 AI가 생성한 참고용 문장입니다. 법적 자문으로 간주하지 마십시오.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📋 주요 기능 모달 (우측 사이드에서만 열림) -->
+      <div class="modal-overlay" id="mainFeaturesModal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 data-translate-key="mainFeaturesTitle">📋 주요 기능</h3>
+            <button class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <ul class="tip-list">
+              <li data-translate-key="featureClauseAnalysis">계약서 조항 해석</li>
+              <li data-translate-key="featureLegalTerms">법률 용어 설명</li>
+              <li data-translate-key="featureSummarization">문서 요약</li>
+              <li data-translate-key="featureConditionAnalysis">조건 분석</li>
+              <li data-translate-key="featureRiskDetection">위험 요소 식별</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endblock %}
+
+    {% block footer %}
+      {% include "main/components/footer.html" %}
+    {% endblock %}
+
+    <script type="module" src="{% static 'js/main.js' %}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

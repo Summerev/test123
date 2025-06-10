@@ -1,0 +1,77 @@
+# Python 가상환경
+legal_venv/
+venv/
+.env/
+env/
+
+# Python 캐시 파일
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# 환경변수 파일
+.env
+.env.*
+!.env.example
+
+# 패키지 배포 관련
+build/
+dist/
+*.egg-info/
+*.egg
+
+# VSCode 설정
+.vscode/
+
+# 로그 파일
+*.log
+logs/
+!logs/
+!logs/commit-log.txt
+
+# SQLite 데이터베이스
+*.sqlite3
+
+# PostgreSQL 로컬 볼륨 (예: docker-compose에서 사용)
+pgdata/
+postgres_data/
+
+# Django collectstatic 출력 (staticfiles/)
+staticfiles/
+
+# media 파일 (사용자 업로드 등)
+media/
+
+# 마이그레이션 캐시만 무시
+**/migrations/__pycache__/
+
+# Jupyter 노트북 체크포인트
+.ipynb_checkpoints/
+
+# 테스트 결과 및 커버리지
+htmlcov/
+coverage.xml
+*.cover
+.cache/
+.tox/
+.nox/
+
+# pip 관련 임시 파일
+pip-wheel-metadata/
+*.whl
+
+# 정적 분석 도구 캐시
+.mypy_cache/
+.pytest_cache/
+
+# OS/에디터 시스템 파일
+.DS_Store
+Thumbs.db
+
+# IDE 설정
+.idea/
+
+# 백업 파일
+*.bak
+*.swp
