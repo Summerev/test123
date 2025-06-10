@@ -58,6 +58,7 @@ const translations = {
     passwordLabel: '비밀번호',
     passwordPlaceholderLogin: '비밀번호를 입력하세요',
     loginButton: '로그인',
+	rememberMeLabel: '로그인 유지',
     noAccount: '계정이 없으신가요?',
     signupLink: '회원가입',
     signupModalTitle: '회원가입',

@@ -17,4 +17,7 @@ urlpatterns = [
 
     # 로그인 상태 확인을 위한 AJAX API 엔드포인트 추가 (이전 main.js에서 호출하는 부분)
     path('check_login_status/', views.check_login_status, name='check_login_status'),
+
+	# 테스트용
+    # path('test_db_query/', views.test_db_query, name='test_db_query'),
 ]

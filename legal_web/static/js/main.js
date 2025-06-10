@@ -111,56 +111,84 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 로그인 폼 제출 이벤트 리스너
-    if (loginForm) {
-        on(loginForm, 'submit', async (event) => {
-            event.preventDefault();
-            const email = loginForm.elements.email.value;
-            const password = loginForm.elements.password.value;
-            const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false; 
+// 로그인 폼 제출 이벤트 리스너
+if (loginForm) {
+	on(loginForm, 'submit', async (event) => {
+		event.preventDefault();
 
-            console.log('Attempting login with:', email, 'Remember Me:', rememberMe);
-            const result = await loginUser(email, password, rememberMe); 
+		// 👇 이 부분도 querySelector로 변경합니다.
+		const emailInput = loginForm.querySelector('input[name="email"]');
+		const passwordInput = loginForm.querySelector('input[name="password"]');
 
-            if (result.success) {
-                alert(result.message);
-                // 로그인 성공 시 UI 업데이트 (서버에서 최신 상태 가져옴)
-                updateAuthUI(); 
-                closeModal('loginModal');
-                // 로그인 폼 필드 초기화
-                loginForm.reset(); 
-            } else {
-                alert(result.error);
-                console.error('로그인 실패:', result.error);
-            }
-        });
-    }
+		// 요소가 제대로 찾아졌는지 확인하는 방어 코드
+		if (!emailInput) {
+			console.error("Error: Login form email input not found with name='email'.");
+			alert("이메일 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+			return;
+		}
+		if (!passwordInput) {
+			console.error("Error: Login form password input not found with name='password'.");
+			alert("비밀번호 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+			return;
+		}
 
-    // 회원가입 폼 제출 이벤트 리스너
-    if (signupForm) {
-        on(signupForm, 'submit', async (event) => {
-            event.preventDefault();
-            const name = signupForm.elements.name.value;
-            const email = signupForm.elements.email.value;
-            const password = signupForm.elements.password1.value; // password1로 변경됨
-            const confirmPassword = signupForm.elements.password2.value; // password2로 변경됨
+		const email = emailInput.value;
+		const password = passwordInput.value;
+		const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
 
-            console.log('Attempting signup with:', name, email);
-            const result = await signupUser(name, email, password, confirmPassword);
+		console.log('Attempting login with:', email, 'Remember Me:', rememberMe);
+		const result = await loginUser(email, password, rememberMe);
 
-            if (result.success) {
-                alert(result.message);
-                // 회원가입 성공 시 UI 업데이트 (서버에서 최신 상태 가져옴)
-                updateAuthUI(); 
-                closeModal('signupModal'); 
-                // 회원가입 폼 필드 초기화
-                signupForm.reset();
-            } else {
-                alert(result.error);
-                console.error('회원가입 실패:', result.error);
-            }
-        });
-    }
+		// 👇 이 부분이 핵심입니다! 로그인 성공 시 UI 업데이트 및 모달 닫기
+		if (result.success) {
+			alert(result.message); // 로그인 성공 메시지 표시
+			updateAuthUI(); // UI 업데이트 함수 호출 (로그인 상태 반영)
+			closeModal('loginModal'); // 로그인 모달 닫기
+			loginForm.reset(); // 폼 필드 초기화 (선택 사항이지만 좋은 사용자 경험 제공)
+		} else {
+			alert(result.error); // 로그인 실패 메시지 표시
+			console.error('로그인 실패:', result.error);
+		}
+	});
+}
+
+// 회원가입 폼 제출 이벤트 리스너
+if (signupForm) {
+    on(signupForm, 'submit', async (event) => {
+        event.preventDefault();
+
+        // 👇 이 부분을 수정합니다. (signupForm.elements 대신 querySelector 사용)
+        const nameInput = signupForm.querySelector('input[name="name"]');
+        const emailInput = signupForm.querySelector('input[name="email"]');
+        const passwordInput = signupForm.querySelector('input[name="password"]');
+        const confirmPasswordInput = signupForm.querySelector('input[name="confirmPassword"]');
+
+        // 요소가 제대로 찾아졌는지 확인하는 방어 코드 (매우 중요)
+        if (!nameInput || !emailInput || !passwordInput || !confirmPasswordInput) {
+            console.error("Error: One or more signup form input fields not found.");
+            alert("회원가입 폼 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+            return; // 함수 실행 중단
+        }
+
+        const name = nameInput.value;
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        console.log('Attempting signup with:', name, email);
+        const result = await signupUser(name, email, password, confirmPassword);
+
+        if (result.success) {
+            alert(result.message);
+            updateAuthUI();
+            closeModal('signupModal');
+            signupForm.reset();
+        } else {
+            alert(result.error);
+            console.error('회원가입 실패:', result.error);
+        }
+    });
+}
 
     // 모달 전환 링크 이벤트 리스너 (로그인 -> 회원가입)
     if (noAccountLink) {
