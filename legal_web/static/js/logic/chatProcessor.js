@@ -33,7 +33,6 @@ export async function processUserMessage(userInput) {
     const userMessageId = generateMessageId();
     const userTimestamp = new Date().toISOString();
     addMessageToChatAndHistory(userInput, 'user', userMessageId, userTimestamp);
-    toggleWelcomeMessage(true);
 
     // Add bot response placeholder
     const botMessageId = generateMessageId();

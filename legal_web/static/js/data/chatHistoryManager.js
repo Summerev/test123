@@ -36,7 +36,6 @@ export function getChatTitle(sessionId) {
 }
 
 export function addMessageToChatAndHistory(messageText, sender, messageId, timestamp, isHistory = false) {
-    toggleWelcomeMessage(true);
 
     const lastMessage = chatHistory.length > 0 ? chatHistory[chatHistory.length - 1] : null;
     if (!lastMessage || lastMessage.text !== messageText || lastMessage.sender !== sender || lastMessage.id !== messageId) {
@@ -61,15 +60,6 @@ export function loadChatHistoryFromStorage() {
 
     chatMessagesContainer.innerHTML = '';
 
-    if (chatHistory.length > 0) {
-        toggleWelcomeMessage(true);
-        chatHistory.forEach((msg) => {
-            addMessageToUI(msg.text, msg.sender, msg.id, msg.timestamp, true);
-        });
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-    } else {
-        toggleWelcomeMessage(false);
-    }
 }
 
 export function loadRecentChats() {

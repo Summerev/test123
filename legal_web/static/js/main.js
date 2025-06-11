@@ -135,6 +135,8 @@ function switchTab(sessionId) {
     chatMessages.innerHTML = '';
     if (messages.length === 0) {
         welcomeMessage.classList.remove('hidden');
+        chatMessages.appendChild(welcomeMessage);
+        sendButton.disabled = false;
     } else {
         welcomeMessage.classList.add('hidden');
         messages.forEach(msg => addMessageToUI(msg));
@@ -188,7 +190,8 @@ function handleSendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    if (!activeTab) {
+    if (!activeTab || !chatSessions[activeTab]) {
+        // 새 대화 세션이 없으면
         const sessionId = generateSessionId();
         chatSessions[sessionId] = [];
         createTab(sessionId, '새 대화');
@@ -230,14 +233,46 @@ async function processUserMessage(text) {
 
 // --- Tab Rendering (변경 없음) ---
 function renderTabs() {
-    tabBar.innerHTML = '';
+    if (!tabBar) return;               // 탭바 요소가 없으면 즉시 종료
+    tabBar.innerHTML = '';             // 기존 탭 삭제
+
+    // 1) 탭 다시 그리기
     openTabs.forEach(t => createTab(t.id, t.title, false, true));
+
+    // 2) 다음 프레임에 너비 계산 & 적용
+    requestAnimationFrame(() => {
+        const children = tabBar.children;
+        const count = Math.min(children.length, 10);
+
+        // 탭이 10개 이하라면 스타일 리셋
+        if (count <= 10) {
+            tabBar.style.width = '';
+            return;
+        }
+
+        // 3) 첫 10개 탭 너비 합산
+        let widthSum = 0;
+        for (let i = 0; i < count; i++) {
+            const tab = children[i];
+            // 안전장치: tab이 유효해야만 계산
+            if (!tab || typeof tab.getBoundingClientRect !== 'function') {
+                continue;
+            }
+            widthSum += tab.getBoundingClientRect().width;
+        }
+
+        // 4) gap(탭 사이 간격) 합산 (CSS에서 gap:6px 적용 중)
+        const totalGap = (count - 1) * 6;
+        tabBar.style.maxWidth = (widthSum + totalGap) + 'px';
+    });
 }
 
 function restoreTabs() {
     if (openTabs.length > 0) {
         renderTabs();
-        if (activeTab) switchTab(activeTab);
+        if (activeTab) {
+            switchTab(activeTab);
+        }
     }
 }
 
@@ -279,6 +314,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initChatInputAutoResize();
     initExamplePrompts();
     restoreTabs();
+
+    // 아직 대화 탭이 하나도 활성화되지 않았다면 (런서버 첫화면 포함)
+    if (!activeTab) {
+        // 기존 화면 지우고
+        chatMessages.innerHTML = '';
+        // 웰컴 메시지 보이기
+        welcomeMessage.classList.remove('hidden');
+        // 반드시 다시 DOM에 붙여 줘야 보여집니다
+        chatMessages.appendChild(welcomeMessage);
+        // 웰컴 상태에서도 전송 버튼 활성화
+        sendButton.disabled = false;
+    }
 
     const usageTipsBtn = document.querySelector('button[data-translate-key="usageTips"]');
     const supportDocsBtn = document.querySelector('button[data-translate-key="supportDocs"]');
@@ -345,6 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tabBar.innerHTML = '';
                 chatMessages.innerHTML = '';
                 welcomeMessage.classList.remove('hidden');
+                chatMessages.appendChild(welcomeMessage);
+                sendButton.disabled = false;
             }
         });
     }
@@ -380,12 +429,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 언어 변경 이벤트 (공통)
-    on(document, 'languageChanged', (e) => {
-        changeLanguage(e.detail.lang);
-        loadChatHistoryFromStorage();
-        loadRecentChats();
-    });
 
     // 최근 대화 목록 클릭 (공통)
     on(recentChatsList, 'click', (e) => {
