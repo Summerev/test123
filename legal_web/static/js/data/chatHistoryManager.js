@@ -129,3 +129,23 @@ export function clearAllChats() {
 export function getChatHistory() {
     return chatHistory;
 }
+
+export function getChatSessionList() {
+    return Object.entries(chatTitles).map(([id, title]) => ({ id, title }));
+}
+
+// ─── 세션 삭제 함수 ───
+// 사이드바 제목 목록에서 해당 세션을 지우고 UI를 갱신합니다
+export function deleteChatSession(sessionId) {
+    // 1) sessionId 키 삭제
+    delete chatTitles[sessionId];
+    // 2) 로컬스토리지에 반영
+    localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
+    // 3) ui용 로드 함수 호출 (기존 loadRecentChats 사용)
+    loadRecentChats();
+}
+
+export function clearChatSessionTitles() {
+    chatTitles = {}; // 모듈 내 변수 초기화
+    localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
+}

@@ -72,7 +72,7 @@ const translations = {
     signupButton: '회원가입',
     alreadyAccount: '이미 계정이 있으신가요?',
     loginLink: '로그인',
-	logoutButton: '로그아웃',
+    logoutButton: '로그아웃',
     feedbackQuestion: '이 해석이 도움이 되었나요?',
     feedbackYes: '👍',
     feedbackNo: '👎',
@@ -132,6 +132,13 @@ const translations = {
     sampleEasyExplanationForTerm: (term) =>
       `쉽게 말해, ${term}은(는) 이럴 때 쓰는 말이에요...`,
     greetingKeyword: '안녕',
+    usageTips: "💡 사용 팁",
+    supportDocs: "📄 지원 문서",
+    precautions: "⚠️ 주의사항",
+    newChatTab: "새 대화",
+    exportChatBtn: "대화 내보내기",
+    clearAllChats: "대화 전체 삭제",
+
   },
   en: {
     logoText: 'LegalBot',
@@ -969,39 +976,39 @@ let messageIdCounter = parseInt(localStorage.getItem('legalBotMessageIdCounter')
  * @returns {string} The translated text.
  */
 export function getTranslation(key, ...args) {
-    const translationSet = translations[currentLanguage] || translations.ko;
-    let translatedString = translationSet[key] || key;
-    if (typeof translatedString === 'function') {
-        return translatedString(...args);
-    }
-    return translatedString;
+  const translationSet = translations[currentLanguage] || translations.ko;
+  let translatedString = translationSet[key] || key;
+  if (typeof translatedString === 'function') {
+    return translatedString(...args);
+  }
+  return translatedString;
 }
 
 /**
  * Applies translations to all translatable elements on the page.
  */
 export function applyTranslations() {
-    document.querySelectorAll('[data-translate-key]').forEach((el) => {
-        const key = el.getAttribute('data-translate-key');
-        el.textContent = getTranslation(key);
-    });
-    document.querySelectorAll('[data-translate-key-placeholder]').forEach((el) => {
-        const key = el.getAttribute('data-translate-key-placeholder');
-        el.placeholder = getTranslation(key);
-    });
+  document.querySelectorAll('[data-translate-key]').forEach((el) => {
+    const key = el.getAttribute('data-translate-key');
+    el.textContent = getTranslation(key);
+  });
+  document.querySelectorAll('[data-translate-key-placeholder]').forEach((el) => {
+    const key = el.getAttribute('data-translate-key-placeholder');
+    el.placeholder = getTranslation(key);
+  });
 
-    const langButtonText = document.querySelector('.language-btn > span:first-child');
-    if (langButtonText) {
-        langButtonText.textContent = getTranslation('language');
-    }
+  const langButtonText = document.querySelector('.language-btn > span:first-child');
+  if (langButtonText) {
+    langButtonText.textContent = getTranslation('language');
+  }
 
-    const themeToggleButton = document.getElementById('themeToggle');
-    if (themeToggleButton) {
-        themeToggleButton.title =
-            currentTheme === 'light'
-                ? getTranslation('themeToggleDark')
-                : getTranslation('themeToggleLight');
-    }
+  const themeToggleButton = document.getElementById('themeToggle');
+  if (themeToggleButton) {
+    themeToggleButton.title =
+      currentTheme === 'light'
+        ? getTranslation('themeToggleDark')
+        : getTranslation('themeToggleLight');
+  }
 }
 
 /**
@@ -1009,12 +1016,12 @@ export function applyTranslations() {
  * @param {string} lang - The language code to change to (e.g., 'ko', 'en').
  */
 export function changeLanguage(lang) {
-    currentLanguage = lang;
-    localStorage.setItem('legalBotLanguage', lang);
-    document.documentElement.lang = lang;
-    applyTranslations();
-    // Note: loadChatHistoryFromStorage and loadRecentChats are called from main.js
-    // after language change event is dispatched.
+  currentLanguage = lang;
+  localStorage.setItem('legalBotLanguage', lang);
+  document.documentElement.lang = lang;
+  applyTranslations();
+  // Note: loadChatHistoryFromStorage and loadRecentChats are called from main.js
+  // after language change event is dispatched.
 }
 
 /**
@@ -1022,7 +1029,7 @@ export function changeLanguage(lang) {
  * @returns {string} The current language code.
  */
 export function getCurrentLanguage() {
-    return currentLanguage;
+  return currentLanguage;
 }
 
 /**
@@ -1030,7 +1037,7 @@ export function getCurrentLanguage() {
  * @returns {string} The current interpretation mode.
  */
 export function getCurrentInterpretationMode() {
-    return currentInterpretationMode;
+  return currentInterpretationMode;
 }
 
 /**
@@ -1038,9 +1045,9 @@ export function getCurrentInterpretationMode() {
  * @param {string} mode - The mode to set (e.g., 'default', 'easy').
  */
 export function setInterpretationMode(mode) {
-    currentInterpretationMode = mode;
-    localStorage.setItem('legalBotInterpretationMode', currentInterpretationMode);
-    console.log('Interpretation Mode set to:', currentInterpretationMode);
+  currentInterpretationMode = mode;
+  localStorage.setItem('legalBotInterpretationMode', currentInterpretationMode);
+  console.log('Interpretation Mode set to:', currentInterpretationMode);
 }
 
 /**
@@ -1048,7 +1055,7 @@ export function setInterpretationMode(mode) {
  * @returns {boolean} True if Enter key sends, false otherwise.
  */
 export function getEnterKeySends() {
-    return enterKeySends;
+  return enterKeySends;
 }
 
 /**
@@ -1056,8 +1063,8 @@ export function getEnterKeySends() {
  * @param {boolean} enabled - True to enable, false to disable.
  */
 export function setEnterKeySends(enabled) {
-    enterKeySends = enabled;
-    localStorage.setItem('legalBotEnterKeySends', enabled);
+  enterKeySends = enabled;
+  localStorage.setItem('legalBotEnterKeySends', enabled);
 }
 
 /**
@@ -1065,7 +1072,7 @@ export function setEnterKeySends(enabled) {
  * @returns {Array<object>} Array of feedback data.
  */
 export function getFeedbackData() {
-    return feedbackData;
+  return feedbackData;
 }
 
 /**
@@ -1073,8 +1080,8 @@ export function getFeedbackData() {
  * @param {object} newFeedback - The feedback object to add.
  */
 export function addFeedbackData(newFeedback) {
-    feedbackData.push(newFeedback);
-    localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
+  feedbackData.push(newFeedback);
+  localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
 }
 
 /**
@@ -1082,9 +1089,9 @@ export function addFeedbackData(newFeedback) {
  * @returns {string} A new unique message ID.
  */
 export function generateMessageId() {
-    messageIdCounter++;
-    localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
-    return `msg-${Date.now()}-${messageIdCounter}`;
+  messageIdCounter++;
+  localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
+  return `msg-${Date.now()}-${messageIdCounter}`;
 }
 
 /**
@@ -1092,7 +1099,7 @@ export function generateMessageId() {
  * @returns {object} The legal terms dictionary.
  */
 export function getLegalTerms() {
-    return legalTerms;
+  return legalTerms;
 }
 
 /**
@@ -1100,7 +1107,7 @@ export function getLegalTerms() {
  * @returns {string} The current theme ('light' or 'dark').
  */
 export function getCurrentTheme() {
-    return currentTheme;
+  return currentTheme;
 }
 
 /**
@@ -1108,6 +1115,6 @@ export function getCurrentTheme() {
  * @param {string} theme - The theme to set ('light' or 'dark').
  */
 export function setCurrentTheme(theme) {
-    currentTheme = theme;
-    localStorage.setItem('legalBotTheme', theme);
+  currentTheme = theme;
+  localStorage.setItem('legalBotTheme', theme);
 }

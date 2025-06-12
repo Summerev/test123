@@ -247,12 +247,6 @@ body.dark-mode .example-prompt:hover {
     flex-shrink: 0;
 }
 
-.chat-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: end;
-    gap: 1rem;
-}
 
 .chat-input {
     flex: 1;
@@ -301,76 +295,184 @@ body.dark-mode .chat-input:focus {
     cursor: not-allowed;
 }
 
+
 body.dark-mode .send-button:disabled {
     background: #5a667a;
 }
 
 /* Chat Tabs */
-.tab-bar {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    box-sizing: border-box;
-
-    /* 아래 두 줄 추가 */
+/* 챗탭 기본 스타일 */
+.tab-bar .chat-tab {
     flex: 0 0 auto;
-    /* flex 아이템으로서 늘어나지 않게 */
-    align-self: flex-start;
-    /* 부모의 stretch를 무시하고 auto 너비를 사용 */
-
-    width: auto;
-    /* 100% 제거 */
-    max-width: calc(10 * 200px + 9 * 6px);
-}
-
-.chat-tab {
     display: inline-flex;
     align-items: center;
-    padding: 6px 12px;
-    background-color: var(--button-bg);
-    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    /* 여백을 조금 줄이고 */
+    margin-right: 0.5rem;
+    /* 탭 간 간격 */
+    background: var(--button-bg);
+    border-radius: 0.75rem;
+    /* 둥근 모서리 */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
     white-space: nowrap;
-    flex-shrink: 0;
-    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
-    border: 1px solid var(--border-color);
-    flex: 0 0 auto;
 }
 
+/* 탭 호버 시 */
+.tab-bar .chat-tab:hover {
+    background: var(--sidebar-bg);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
 
-.chat-tab.active {
-    background-color: var(--primary-accent);
+/* 액티브 탭 스타일 */
+.tab-bar .chat-tab.active {
+    background: var(--primary-accent);
     color: var(--primary-accent-text);
     border-color: var(--primary-accent-darker);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.close-tab {
+/* 액티브 탭 언더라인으로 강조하고 싶다면 (선택) */
+/*
+.tab-bar .chat-tab.active {
+  border-bottom: 3px solid var(--primary-accent-text);
+  box-shadow: none;
+}
+*/
+
+/* 닫기 버튼 스타일 */
+.tab-bar .chat-tab .close-tab {
     margin-left: 0.5rem;
     font-weight: bold;
-    cursor: pointer;
-    color: var(--icon-color);
     transition: color 0.2s;
 }
 
-.chat-tab.active .close-tab {
-    color: var(--primary-accent-text);
-    opacity: 0.7;
-}
-
-.close-tab:hover {
+.tab-bar .chat-tab .close-tab:hover {
     color: var(--danger-color);
 }
 
-.chat-tab.active .close-tab:hover {
-    opacity: 1;
+.tab-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
 }
 
-.chat-container .tab-bar {
-    width: auto !important;
-    max-width: calc(10 * 200px + 9 * 6px) !important;
-    overflow-x: auto !important;
+/* 드래그 중일 때 채팅창 강조 */
+.chat-messages.drag-over {
+    border: 2px dashed var(--primary-accent);
+}
+
+/* 첨부파일 미리보기 */
+.attachment-preview {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    margin-bottom: 4px;
+}
+
+.attachment-item {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attachment-item img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.attachment-item .file-icon {
+    font-size: 0.75rem;
+    color: #555;
+}
+
+.attachment-item .remove-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    line-height: 18px;
+    cursor: pointer;
+}
+
+/* + 버튼 & 파일 메뉴 */
+.chat-input-with-attach {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* + 버튼 & 파일 메뉴 */
+.chat-input-wrapper {
+    position: relative;
+    /* 이미 있지만 혹시 빠졌다면 꼭 추가 */
+    display: flex;
+    /* 이미 있지만 혹시 빠졌다면 꼭 추가 */
+    align-items: center;
+    /* 세로 중앙 정렬 */
+    gap: 1rem;
+    /* 입력창과 버튼 간격 */
+}
+
+.add-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #007bff;
+    color: #fff;
+    font-size: 1.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.file-menu {
+    position: absolute;
+    bottom: 100%;
+    /* 입력창 바로 위, 경계선 가림 */
+    left: 0;
+    /* + 버튼 기준 왼쪽 정렬 */
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.file-menu.hidden {
+    display: none;
+}
+
+.file-add-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.file-add-btn:hover {
+    background: #f0f0f0;
 }

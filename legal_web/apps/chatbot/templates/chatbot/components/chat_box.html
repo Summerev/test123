@@ -14,6 +14,9 @@
     {% endif %}
   </div>
 
+  <!-- ✨ 첨부파일 미리보기 영역 -->
+  <div id="attachmentPreview" class="attachment-preview"></div>
+
   <!-- 🔹 메시지 출력 영역 -->
   <div class="chat-messages" id="chatMessages">
     <div id="welcomeMessage" class="welcome-message">
@@ -35,9 +38,21 @@
     </div>
   </div>
 
-  <!-- 🔹 입력창 -->
+  <!-- 🔹 입력창 영역 -->
   <div class="chat-input-container">
     <div class="chat-input-wrapper">
+      <!-- + 버튼: 파일 메뉴 토글 -->
+      <button id="addBtn" type="button" class="add-btn">+</button>
+      <!-- 숨김 파일 입력 -->
+      <input
+        id="fileInput"
+        type="file"
+        accept=".pdf,.docx,.hwp,image/*"
+        multiple
+        hidden
+      />
+
+      <!-- 기존 텍스트 입력창 -->
       <textarea
         class="chat-input"
         id="chatInput"
@@ -45,7 +60,20 @@
         rows="1"
         data-translate-key-placeholder="chatPlaceholder"
       ></textarea>
-      <button class="send-button" id="sendButton" data-translate-key="sendButton">전송</button>
+      <!-- 전송 버튼 -->
+      <button
+        class="send-button"
+        id="sendButton"
+        data-translate-key="sendButton"
+      >전송</button>
+
+      <!-- 파일 메뉴: + 버튼 누르면 이 안에 표시 -->
+      <div id="fileMenu" class="file-menu hidden">
+        <button id="fileAddBtn" type="button" class="file-add-btn">
+          📁 사진 및 파일 추가
+        </button>
+      </div>
     </div>
   </div>
+
 </main>

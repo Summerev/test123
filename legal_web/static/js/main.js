@@ -6,14 +6,27 @@ import {
     getEnterKeySends, setEnterKeySends
 } from './data/translation.js';
 import {
-    loadRecentChats, loadChatHistoryFromStorage,
-    clearAllChats, getChatHistory, formatTimestamp
+    loadRecentChats,
+    loadChatHistoryFromStorage,
+    clearAllChats,
+    getChatHistory,
+    formatTimestamp,
+    saveChatHistoryWithTitle,   // ← 추가
+    getChatSessionList,
 } from './data/chatHistoryManager.js';
+import { clearChatSessionTitles } from './data/chatHistoryManager.js';
 import { initThemeToggle } from './ui/themeToggle.js';
 import { initDropdowns } from './ui/dropdowns.js';
 import { initCollapsibles } from './ui/sidebarCollapsible.js';
 import { initModals, openModal, closeModal } from './ui/modalManager.js';
-import { initChatInputAutoResize, initExamplePrompts } from './ui/chatUI.js';
+import {
+    initChatInputAutoResize,
+    initExamplePrompts,
+    initFileDragAndDrop,
+    initAttachmentUI,
+    renderRecentChats,         // ← 추가
+
+} from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit } from './logic/chatProcessor.js';
 
 // --- DOM Element Selections (변경 없음) ---
@@ -80,12 +93,11 @@ function addMessageToUI(msg) {
 }
 
 
-/**
- * 새로운 탭을 생성합니다. (변경 없음)
- */
 function createTab(sessionId, title, shouldSwitch = true, skipPush = false) {
+    // 1) 중복 탭 방지
     if ([...tabBar.children].some(tab => tab.dataset.sessionId === sessionId)) return;
 
+    // 2) DOM으로 탭 요소 생성
     const tab = document.createElement('div');
     tab.classList.add('chat-tab');
     tab.dataset.sessionId = sessionId;
@@ -98,31 +110,30 @@ function createTab(sessionId, title, shouldSwitch = true, skipPush = false) {
     const closeBtn = document.createElement('span');
     closeBtn.textContent = '×';
     closeBtn.classList.add('close-tab');
-    closeBtn.onclick = (e) => {
-        e.stopPropagation();
-        closeTab(sessionId);
-    };
+    closeBtn.onclick = e => { e.stopPropagation(); closeTab(sessionId); };
 
     tab.onclick = () => switchTab(sessionId);
     tab.appendChild(titleSpan);
     tab.appendChild(closeBtn);
     tabBar.appendChild(tab);
 
+    // 3) 자동 전환
     if (shouldSwitch) {
         tabBar.scrollLeft = tabBar.scrollWidth;
         activeTab = sessionId;
         switchTab(sessionId);
     }
 
+    // 4) 상태 저장 후 렌더링 및 스크롤 조정
     if (!skipPush) {
         openTabs.push({ id: sessionId, title });
         saveTabState();
+        renderTabs();   // ← 여기에만 있어야 함
     }
 }
 
-/**
- * 지정된 ID의 탭으로 전환합니다. (변경 없음)
- */
+
+
 function switchTab(sessionId) {
     activeTab = sessionId;
     localStorage.setItem('active_tab', sessionId);
@@ -143,9 +154,6 @@ function switchTab(sessionId) {
     }
 }
 
-/**
- * 탭을 닫습니다. (변경 없음)
- */
 function closeTab(sessionId) {
     openTabs = openTabs.filter(t => t.id !== sessionId);
     delete chatSessions[sessionId];
@@ -165,9 +173,6 @@ function closeTab(sessionId) {
     }
 }
 
-/**
- * 탭의 제목을 업데이트합니다. (변경 없음)
- */
 function updateTabTitle(sessionId, newTitle) {
     const tab = [...tabBar.children].find(t => t.dataset.sessionId === sessionId);
     if (tab) {
@@ -185,19 +190,21 @@ function updateTabTitle(sessionId, newTitle) {
     }
 }
 
-// --- Message Handling (변경 없음) ---
 function handleSendMessage() {
+    // 1) 입력값 가져오기
     const text = chatInput.value.trim();
     if (!text) return;
 
+    // 2) 활성 세션이 없으면 새 세션 생성 & 사이드바 목록 갱신
     if (!activeTab || !chatSessions[activeTab]) {
-        // 새 대화 세션이 없으면
         const sessionId = generateSessionId();
         chatSessions[sessionId] = [];
-        createTab(sessionId, '새 대화');
+        saveChatHistoryWithTitle(sessionId, '새 대화');
+        renderRecentChats(getChatSessionList());
         activeTab = sessionId;
     }
 
+    // 3) 사용자 메시지 객체 생성 & UI 추가
     const userMsg = {
         sender: 'user',
         text,
@@ -207,17 +214,26 @@ function handleSendMessage() {
     addMessageToUI(userMsg);
     saveTabState();
 
+    // 4) 첫 메시지이면 탭 제목 업데이트
     if (chatSessions[activeTab].length === 1) {
+        // 1) 세션 타이틀 저장소에 반영
+        saveChatHistoryWithTitle(activeTab, text);
+        // 2) 사이드바 목록 다시 그리기
+        renderRecentChats(getChatSessionList());
+        // 3) 탭 UI 타이틀도 업데이트
         updateTabTitle(activeTab, text);
     }
 
+    // 5) 입력창 초기화
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendButton.disabled = true;
     welcomeMessage.classList.add('hidden');
 
+    // 6) 봇 응답 처리
     processUserMessage(text);
 }
+
 
 async function processUserMessage(text) {
     const responseText = `"${text}"에 대한 기본 설명입니다.`;
@@ -233,37 +249,35 @@ async function processUserMessage(text) {
 
 // --- Tab Rendering (변경 없음) ---
 function renderTabs() {
-    if (!tabBar) return;               // 탭바 요소가 없으면 즉시 종료
-    tabBar.innerHTML = '';             // 기존 탭 삭제
+    if (!tabBar) return;
+    tabBar.innerHTML = '';
 
-    // 1) 탭 다시 그리기
     openTabs.forEach(t => createTab(t.id, t.title, false, true));
 
-    // 2) 다음 프레임에 너비 계산 & 적용
     requestAnimationFrame(() => {
         const children = tabBar.children;
-        const count = Math.min(children.length, 10);
+        const total = children.length;
+        const visible = Math.min(total, 10);
 
-        // 탭이 10개 이하라면 스타일 리셋
-        if (count <= 10) {
+        // 10개 이하일 땐 고정 해제
+        if (total <= 10) {
             tabBar.style.width = '';
             return;
         }
 
-        // 3) 첫 10개 탭 너비 합산
-        let widthSum = 0;
-        for (let i = 0; i < count; i++) {
+        // 첫 10개 탭 너비 합산
+        let sum = 0;
+        for (let i = 0; i < visible; i++) {
             const tab = children[i];
-            // 안전장치: tab이 유효해야만 계산
-            if (!tab || typeof tab.getBoundingClientRect !== 'function') {
-                continue;
+            if (tab && tab.getBoundingClientRect) {
+                sum += tab.getBoundingClientRect().width;
             }
-            widthSum += tab.getBoundingClientRect().width;
         }
+        // 탭 사이 gap(6px) 추가
+        sum += (visible - 1) * 6;
 
-        // 4) gap(탭 사이 간격) 합산 (CSS에서 gap:6px 적용 중)
-        const totalGap = (count - 1) * 6;
-        tabBar.style.maxWidth = (widthSum + totalGap) + 'px';
+        // ★ 여기서 width만 설정
+        tabBar.style.width = sum + 'px';
     });
 }
 
@@ -305,25 +319,51 @@ if (alreadyAccountLink) {
 
 // --- DOMContentLoaded Event Listener ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 초기화 함수들 (공통)
     applyTranslations();
     initThemeToggle();
     initDropdowns();
-    initCollapsibles();
     initModals();
     initChatInputAutoResize();
     initExamplePrompts();
+    initFileDragAndDrop();
+    initAttachmentUI();
     restoreTabs();
+    renderRecentChats(getChatSessionList());
 
-    // 아직 대화 탭이 하나도 활성화되지 않았다면 (런서버 첫화면 포함)
+
+    // ─── 새 대화 버튼 클릭 시 사이드바에만 추가 ───
+
+    const newTabButton = $('#newTabButton');
+    if (newTabButton) {
+        on(newTabButton, 'click', () => {
+            const sessionId = generateSessionId();
+            // ① 새 세션 메시지 배열 초기화
+            chatSessions[sessionId] = [];
+            // ② activeTab 세팅
+            activeTab = sessionId;
+            // ③ 세션 타이틀 저장소에 등록
+            saveChatHistoryWithTitle(sessionId, '새 대화');
+            // ④ 사이드바 목록 갱신
+            renderRecentChats(getChatSessionList());
+            // ⑤ 바로 해당 세션으로 전환 (UI)
+            switchTab(sessionId);
+        });
+    }
+    // … 나머
+
     if (!activeTab) {
-        // 기존 화면 지우고
         chatMessages.innerHTML = '';
-        // 웰컴 메시지 보이기
         welcomeMessage.classList.remove('hidden');
-        // 반드시 다시 DOM에 붙여 줘야 보여집니다
         chatMessages.appendChild(welcomeMessage);
-        // 웰컴 상태에서도 전송 버튼 활성화
+        sendButton.disabled = false;
+    }
+    // …이하 기존 핸들러…
+
+
+    if (!activeTab) {
+        chatMessages.innerHTML = '';
+        welcomeMessage.classList.remove('hidden');
+        chatMessages.appendChild(welcomeMessage);
         sendButton.disabled = false;
     }
 
@@ -335,10 +375,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (supportDocsBtn) on(supportDocsBtn, 'click', () => openModal('supportDocsModal'));
     if (precautionsBtn) on(precautionsBtn, 'click', () => openModal('precautionsModal'));
 
-    // 메시지 전송 버튼 (공통)
     if (sendButton) on(sendButton, 'click', handleSendMessage);
 
-    // Enter 키로 전송 (공통)
     if (chatInput) {
         on(chatInput, 'keypress', (e) => {
             if (getEnterKeySends() && e.key === 'Enter' && !e.shiftKey) {
@@ -348,18 +386,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 새 탭 버튼 (공통)
-    const newTabButton = $('#newTabButton');
-    if (newTabButton) {
-        on(newTabButton, 'click', () => {
-            const sessionId = generateSessionId();
-            const title = '새 대화';
-            chatSessions[sessionId] = [];
-            createTab(sessionId, title);
-        });
-    }
-
-    // 대화 내용 내보내기 버튼 (공통)
     if (exportChatButton) {
         on(exportChatButton, 'click', () => {
             const history = chatSessions[activeTab] || [];
@@ -394,43 +420,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 welcomeMessage.classList.remove('hidden');
                 chatMessages.appendChild(welcomeMessage);
                 sendButton.disabled = false;
+
+                // 세션 타이틀 초기화 및 사이드바 목록 갱신
+                clearChatSessionTitles();
+                renderRecentChats(getChatSessionList());
             }
         });
     }
 
-    // 해석 모드 라디오 버튼 (공통)
     interpretationModeRadios.forEach(radio => {
         on(radio, 'change', function () {
             if (this.checked) setInterpretationMode(this.value);
         });
     });
 
-    // Enter 키 설정 토글 (공통)
     if (enterKeyToggle) {
         on(enterKeyToggle, 'change', function () {
             setEnterKeySends(this.checked);
         });
     }
 
-    // 피드백 폼 제출 (공통)
     if (feedbackForm) {
         on(feedbackForm, 'submit', handleFeedbackSubmit);
     }
 
-    // 피드백 아이콘 클릭 (모달 기능 추가)
     on($('#chatMessages'), 'click', (e) => {
         const target = e.target;
         if (target.classList.contains('feedback-yes')) {
-            // "도움이 되었어요" 클릭 시 기존 로직 수행
             handleFeedbackClick(e);
         } else if (target.classList.contains('feedback-no')) {
-            // "도움이 안 되었어요" 클릭 시 모달창 열기
             openModal('feedbackModal');
         }
     });
 
 
-    // 최근 대화 목록 클릭 (공통)
     on(recentChatsList, 'click', (e) => {
         const chatItem = e.target.closest('.chat-item');
         if (chatItem && !chatItem.classList.contains('no-chats-item')) {
@@ -442,3 +465,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// 다른 모듈(chatUI.js)에서 필요로 하는 것들까지 함께 export
+export {
+    switchTab,
+    createTab,
+    openTabs
+};

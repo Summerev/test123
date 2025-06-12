@@ -24,6 +24,12 @@
       {% include "accounts/signup.html" %}
       {% include "chatbot/components/feedback_modal.html" %}
 
+      <div id="fileDropOverlay" class="file-drop-overlay hidden">
+        <div class="file-drop-message">
+          📄 문서를 여기에 놓으면 자동 업로드됩니다 (PDF, DOCX, HWP 지원)
+        </div>
+      </div>
+
       <!-- 💡 사용 팁 모달 -->
       <div class="modal-overlay" id="usageTipsModal">
         <div class="modal">

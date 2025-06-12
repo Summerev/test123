@@ -133,3 +133,6 @@ export function initModals() {
     if (noAccountLink) on(noAccountLink, 'click', (e) => { e.preventDefault(); switchModal('loginModal', 'signupModal'); });
     if (alreadyAccountLink) on(alreadyAccountLink, 'click', (e) => { e.preventDefault(); switchModal('signupModal', 'loginModal'); });
 }
+
+window.openModal = openModal;
+window.closeModal = closeModal;
