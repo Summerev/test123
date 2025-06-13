@@ -1,8 +1,18 @@
 // static/js/ui/chatUI.js
 import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelpers.js';
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
-import { formatTimestamp } from '../data/chatHistoryManager.js';
+import {
+    formatTimestamp,
+    saveChatHistoryWithTitle,
+    clearAllChats,
+    loadChatHistoryFromStorage,
+    getChatHistory,
+} from '../data/chatHistoryManager.js';
+import { handleFileUpload } from '../logic/chatProcessor.js';
+import { switchTab as selectTab, openTabs, createTab } from '../main.js';
+import { deleteChatSession } from '../data/chatHistoryManager.js';
 
+let attachments = [];
 const chatInput = $('#chatInput');
 const sendButton = $('#sendButton');
 const chatMessagesContainer = $('#chatMessages');
@@ -134,25 +144,24 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
                             let displayTerm = matchedTermOriginal;
                             let displayExplanation = termData.explanation;
 
-                            // Select term and explanation based on current language
                             const currentLangCode = getCurrentLanguage();
                             if (currentLangCode === 'en' && termData.en_term) {
                                 displayTerm = termData.en_term;
-                                const enSpecificTermData = getLegalTerms().en[termData.en_term.toLowerCase()];
-                                if (enSpecificTermData) displayExplanation = enSpecificTermData.explanation;
+                                const enSpecific = getLegalTerms().en[termData.en_term.toLowerCase()];
+                                if (enSpecific) displayExplanation = enSpecific.explanation;
                             } else if (currentLangCode === 'ja' && termData.ja_term) {
                                 displayTerm = termData.ja_term;
-                                const jaSpecificTermData = getLegalTerms().ja[termData.ja_term.toLowerCase()];
-                                if (jaSpecificTermData) displayExplanation = jaSpecificTermData.explanation;
+                                const jaSpecific = getLegalTerms().ja[termData.ja_term.toLowerCase()];
+                                if (jaSpecific) displayExplanation = jaSpecific.explanation;
                             } else if (currentLangCode === 'zh' && termData.zh_term) {
                                 displayTerm = termData.zh_term;
-                                const zhSpecificTermData = getLegalTerms().zh[termData.zh_term.toLowerCase()];
-                                if (zhSpecificTermData) displayExplanation = zhSpecificTermData.explanation;
+                                const zhSpecific = getLegalTerms().zh[termData.zh_term.toLowerCase()];
+                                if (zhSpecific) displayExplanation = zhSpecific.explanation;
                             } else if (currentLangCode === 'es' && termData.es_term) {
                                 displayTerm = termData.es_term;
-                                const esSpecificTermData = getLegalTerms().es[termData.es_term.toLowerCase()];
-                                if (esSpecificTermData) displayExplanation = esSpecificTermData.explanation;
-                            } else if (currentLangCode === 'ko') { // Default to Korean if no specific translation found
+                                const esSpecific = getLegalTerms().es[termData.es_term.toLowerCase()];
+                                if (esSpecific) displayExplanation = esSpecific.explanation;
+                            } else if (currentLangCode === 'ko') {
                                 displayTerm = termData.term;
                                 displayExplanation = termData.explanation;
                             }
@@ -186,13 +195,6 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
             <button class="feedback-no" data-feedback="no" data-message-id="${messageId}">${getTranslation('feedbackNo')}</button>
         `;
         messageElement.appendChild(feedbackDiv);
-
-        // Feedback button event listeners are handled by event delegation in main.js
-        // If feedback already exists for this message, disable buttons
-        // const existingFeedback = getFeedbackData().find((f) => f.messageId === messageId);
-        // if (existingFeedback) {
-        //     feedbackDiv.querySelectorAll('button').forEach((btn) => (btn.disabled = true));
-        // }
     }
 
     chatMessagesContainer.appendChild(messageElement);
@@ -201,7 +203,7 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
     if (!isHistory) {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
-    return messageElement; // Return the created element (e.g., for updating loading messages)
+    return messageElement;
 }
 
 /**
@@ -215,7 +217,6 @@ export function scrollToBottom() {
 
 /**
  * Toggles the visibility of the welcome message.
- * @param {boolean} hide - True to hide, false to show.
  */
 export function toggleWelcomeMessage(hide) {
     if (welcomeMessage) {
@@ -223,7 +224,230 @@ export function toggleWelcomeMessage(hide) {
             addClass(welcomeMessage, 'hidden');
         } else {
             removeClass(welcomeMessage, 'hidden');
-            // Translations for welcome message content are handled by applyTranslations in main.js
         }
     }
+}
+
+export function initGlobalFileDropOverlay() {
+    const overlay = document.getElementById('fileDropOverlay');
+    if (!overlay) return;
+
+    let dragTimeout;
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        overlay.classList.add('visible');
+        clearTimeout(dragTimeout);
+        dragTimeout = setTimeout(() => overlay.classList.remove('visible'), 200);
+    });
+    document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        overlay.classList.remove('visible');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileUpload(file);
+    });
+}
+
+export function initAttachmentUI() {
+    const addBtn = $('#addBtn');
+    const fileMenu = $('#fileMenu');
+    const fileAdd = $('#fileAddBtn');
+    const fileInput = $('#fileInput');
+    const preview = $('#attachmentPreview');
+    const dropArea = $('#chatMessages').parentElement;
+
+    // + 버튼으로 메뉴 토글
+    on(addBtn, 'click', e => {
+        e.stopPropagation();
+        fileMenu.classList.toggle('hidden');
+    });
+    // 외부 클릭 시 메뉴 닫기
+    document.addEventListener('click', () => fileMenu.classList.add('hidden'));
+    // 메뉴에서 파일 추가 클릭
+    on(fileAdd, 'click', () => fileInput.click());
+    // 파일 선택 완료 시
+    on(fileInput, 'change', () => {
+        Array.from(fileInput.files).forEach(f => addPreview(f, preview));
+        fileInput.value = '';
+    });
+    // 드래그&드롭
+    on(dropArea, 'dragover', e => e.preventDefault());
+    on(dropArea, 'dragleave', e => e.preventDefault());
+    on(dropArea, 'drop', e => {
+        e.preventDefault();
+        Array.from(e.dataTransfer.files).forEach(f => addPreview(f, preview));
+    });
+}
+
+/** 첨부파일 썸네일/아이콘 + 삭제 버튼 생성 */
+function addPreview(file, preview) {
+    attachments.push(file);
+    const item = document.createElement('div');
+    item.className = 'attachment-item';
+    if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        item.appendChild(img);
+    } else {
+        const ico = document.createElement('div');
+        ico.className = 'file-icon';
+        ico.textContent = file.name.split('.').pop().toUpperCase();
+        item.appendChild(ico);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn';
+    btn.textContent = '×';
+    on(btn, 'click', () => {
+        attachments = attachments.filter(f => f !== file);
+        item.remove();
+    });
+    item.appendChild(btn);
+    preview.appendChild(item);
+}
+
+/**
+ * 최근 대화 목록 렌더링
+ */
+export function renderRecentChats(chatList) {
+    const ul = document.getElementById('recentChatsList');
+    if (!ul) return;
+    ul.innerHTML = '';
+
+    chatList.forEach(chat => {
+        const li = document.createElement('li');
+        li.className = 'chat-item';
+        li.dataset.chatId = chat.id;
+        li.textContent = chat.title;
+
+        // 점3개 버튼
+        const btn = document.createElement('button');
+        btn.className = 'menu-btn';
+        btn.textContent = '⋯';
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            closeAllContextMenus();
+
+            // 1) 메뉴 생성
+            const menu = createContextMenu(chat.id, chat.title);
+
+            // 2) li 위치 정보 가져오기
+            const rect = li.getBoundingClientRect();
+
+            // 3) 메뉴를 body에 붙이고, 절대좌표 찍기
+            menu.style.position = 'absolute';
+            menu.style.top = `${rect.top}px`;
+            menu.style.left = `${rect.right + 4}px`; // 화면 오른쪽 4px 여백
+            menu.style.zIndex = '9999';
+
+            document.body.appendChild(menu);
+        });
+        li.appendChild(btn);
+
+        // 클릭하면 탭 생성/전환
+        li.addEventListener('click', () => {
+            if (!openTabs.some(t => t.id === chat.id)) {
+                createTab(chat.id, chat.title);
+            }
+            selectTab(chat.id);
+        });
+
+        ul.appendChild(li);
+    });
+}
+
+function closeAllContextMenus() {
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+}
+
+function createContextMenu(id, title) {
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+
+    const rename = document.createElement('button');
+    rename.textContent = '이름 바꾸기';
+    rename.addEventListener('click', e => {
+        e.stopPropagation();
+        handleRename(id, title);
+        closeAllContextMenus();
+    });
+
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '삭제';
+    del.addEventListener('click', e => {
+        e.stopPropagation();
+        handleDelete(id);
+        closeAllContextMenus();
+    });
+
+    menu.append(rename, del);
+    return menu;
+}
+
+function createNewSession() {
+    loadChatHistoryFromStorage();
+    const newId = crypto.randomUUID();
+    saveChatHistoryWithTitle(newId, '새 대화');
+    renderRecentChats(getChatHistory());
+    document.addEventListener('click', closeAllContextMenus);
+    selectTab(newId);
+}
+
+function handleRename(id, oldTitle) {
+    const newTitle = prompt('새 이름 입력', oldTitle);
+    if (newTitle) {
+        // 1) 타이틀 저장소에 반영
+        saveChatHistoryWithTitle(id, newTitle);
+        // 2) 사이드바 목록 갱신
+        renderRecentChats(getChatSessionList());
+        // 3) 탭 UI 타이틀 동기화
+        updateTabTitle(id, newTitle);
+    }
+}
+
+function handleDelete(id) {
+    if (confirm('정말 삭제하시겠습니까?')) {
+        // 1) 저장소에서 삭제
+        deleteChatSession(id);
+        // 2) 사이드바 갱신
+        renderRecentChats(getChatSessionList());
+        // 3) 탭도 닫아주기
+        selectTab(openTabs.length ? openTabs[0].id : null);
+    }
+}
+
+function switchToChat(id) {
+    selectTab(id);
+}
+
+function renameChat(id, newTitle) {
+    saveChatHistoryWithTitle(id, newTitle);
+    renderRecentChats(getChatHistory());
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderRecentChats(getChatHistory());
+    document.addEventListener('click', closeAllContextMenus);
+});
+
+/** 파일 드래그앤드롭 초기화 */
+export function initFileDragAndDrop() {
+    const dropArea = document.getElementById('chatMessages');
+    if (!dropArea) return;
+
+    dropArea.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropArea.classList.add('drag-over');
+    });
+    dropArea.addEventListener('dragleave', e => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-over');
+    });
+    dropArea.addEventListener('drop', e => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleFileUpload(file);
+        }
+    });
 }

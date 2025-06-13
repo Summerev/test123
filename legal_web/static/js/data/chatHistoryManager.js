@@ -1,19 +1,13 @@
 // static/js/data/chatHistoryManager.js
-// 수정 전: import { $, getTranslation } from './translation.js';
-// 수정 후: $를 domHelpers.js에서 가져오고, getTranslation은 translation.js에서 가져옵니다.
-import { $ } from '../utils/domHelpers.js'; // <-- 이 줄을 수정했습니다.
+import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
-import { addMessageToUI, toggleWelcomeMessage } from '../ui/chatUI.js'; // chatUI에서 메시지 UI 추가 함수 임포트
+import { addMessageToUI, toggleWelcomeMessage } from '../ui/chatUI.js';
 
 let chatHistory = JSON.parse(localStorage.getItem('legalBotChatHistory')) || [];
+let chatTitles = JSON.parse(localStorage.getItem('chat_session_titles')) || {};
 
 const recentChatsList = $('#recentChatsList');
 
-/**
- * Formats an ISO timestamp string into a local time string.
- * @param {string} isoTimestamp - The ISO timestamp string.
- * @returns {string} The formatted time string.
- */
 export function formatTimestamp(isoTimestamp) {
     if (!isoTimestamp) return '';
     const date = new Date(isoTimestamp);
@@ -24,26 +18,25 @@ export function formatTimestamp(isoTimestamp) {
     });
 }
 
-/**
- * Saves the current chat history to local storage and reloads the recent chats list.
- */
 export function saveChatHistory() {
     localStorage.setItem('legalBotChatHistory', JSON.stringify(chatHistory));
     loadRecentChats();
 }
 
-/**
- * Adds a new message to the chat history and displays it in the UI.
- * @param {string} messageText - The message content.
- * @param {'user'|'bot'} sender - The message sender ('user' or 'bot').
- * @param {string} messageId - The unique message ID.
- * @param {string} timestamp - The message timestamp (ISO string).
- * @param {boolean} [isHistory=false] - True if loading from history, false otherwise.
- */
-export function addMessageToChatAndHistory(messageText, sender, messageId, timestamp, isHistory = false) {
-    toggleWelcomeMessage(true); // Hide welcome message
+// 🔹 새로 추가: 현재 탭 sessionId에 해당하는 제목 저장
+export function saveChatHistoryWithTitle(sessionId, titleText) {
+    const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
+    chatTitles[sessionId] = title;
+    localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
+}
 
-    // Prevent duplicate messages if already added to history via UI
+// 🔹 새로 추가: 현재 탭 sessionId에 해당하는 제목 불러오기
+export function getChatTitle(sessionId) {
+    return chatTitles[sessionId] || null;
+}
+
+export function addMessageToChatAndHistory(messageText, sender, messageId, timestamp, isHistory = false) {
+
     const lastMessage = chatHistory.length > 0 ? chatHistory[chatHistory.length - 1] : null;
     if (!lastMessage || lastMessage.text !== messageText || lastMessage.sender !== sender || lastMessage.id !== messageId) {
         chatHistory.push({
@@ -52,15 +45,12 @@ export function addMessageToChatAndHistory(messageText, sender, messageId, times
             sender: sender,
             timestamp: timestamp,
         });
-        saveChatHistory(); // Save updated history
+        saveChatHistory();
     }
 
     addMessageToUI(messageText, sender, messageId, timestamp, isHistory);
 }
 
-/**
- * Loads chat history from local storage and displays messages in the chat container.
- */
 export function loadChatHistoryFromStorage() {
     const chatMessagesContainer = $('#chatMessages');
     if (!chatMessagesContainer) {
@@ -68,35 +58,22 @@ export function loadChatHistoryFromStorage() {
         return;
     }
 
-    chatMessagesContainer.innerHTML = ''; // Clear existing messages
+    chatMessagesContainer.innerHTML = '';
 
-    if (chatHistory.length > 0) {
-        toggleWelcomeMessage(true); // Hide welcome message if history exists
-        chatHistory.forEach((msg) => {
-            addMessageToUI(msg.text, msg.sender, msg.id, msg.timestamp, true); // isHistory = true
-        });
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-    } else {
-        toggleWelcomeMessage(false); // Show welcome message if no history
-    }
 }
 
-/**
- * Loads recent chat titles into the sidebar.
- */
 export function loadRecentChats() {
     if (!recentChatsList) {
         console.warn('Recent chats list element not found: #recentChatsList');
         return;
     }
 
-    recentChatsList.innerHTML = ''; // Clear existing list
+    recentChatsList.innerHTML = '';
 
     if (chatHistory.length > 0) {
         const uniqueUserMessages = [];
         const processedTexts = new Set();
 
-        // Extract up to 10 unique user messages in reverse chronological order
         for (let i = chatHistory.length - 1; i >= 0; i--) {
             if (chatHistory[i].sender === 'user') {
                 const firstLine = chatHistory[i].text.split('\n')[0];
@@ -107,56 +84,68 @@ export function loadRecentChats() {
                     uniqueUserMessages.unshift({
                         id: chatHistory[i].id,
                         text: displayText,
-                        fullText: chatHistory[i].text, // Store full text for retrieval
+                        fullText: chatHistory[i].text,
                     });
                     processedTexts.add(displayText);
                 }
             }
-            if (uniqueUserMessages.length >= 10) break; // Limit to 10 recent chats
+            if (uniqueUserMessages.length >= 10) break;
         }
 
         uniqueUserMessages.forEach((msg) => {
             const chatItem = document.createElement('div');
             chatItem.classList.add('chat-item');
             chatItem.textContent = `${getTranslation('chatItemPrefix')}${msg.text}`;
-            chatItem.title = msg.fullText; // Show full text on hover
-            chatItem.dataset.chatId = msg.id; // Used for loading specific chat (if implemented)
+            chatItem.title = msg.fullText;
+            chatItem.dataset.chatId = msg.id;
             recentChatsList.appendChild(chatItem);
         });
     } else {
         const noChatsItem = document.createElement('div');
         noChatsItem.classList.add('chat-item', 'no-chats-item');
         noChatsItem.setAttribute('data-translate-key', 'noRecentChats');
-        noChatsItem.textContent = getTranslation('noRecentChats'); // Apply translation directly
+        noChatsItem.textContent = getTranslation('noRecentChats');
         recentChatsList.appendChild(noChatsItem);
     }
 }
 
-/**
- * Clears all chat history.
- */
 export function clearAllChats() {
-    // It's recommended to use a custom modal for confirmation in a real service.
     if (confirm(getTranslation('confirmClearChat'))) {
         chatHistory = [];
-        localStorage.removeItem('legalBotChatHistory'); // Remove from local storage
-        saveChatHistory(); // Reload recent chats (will show empty state)
-        loadChatHistoryFromStorage(); // Reload chat container (will show welcome message)
-        // Reset chat input state
+        chatTitles = {};
+        localStorage.removeItem('legalBotChatHistory');
+        localStorage.removeItem('chat_session_titles');
+        saveChatHistory();
+        loadChatHistoryFromStorage();
         const chatInput = $('#chatInput');
         const sendButton = $('#sendButton');
         if (chatInput) chatInput.value = '';
         if (sendButton) sendButton.disabled = true;
         if (chatInput) chatInput.style.height = 'auto';
-
-        alert(getTranslation('chatCleared')); // Use custom modal
+        alert(getTranslation('chatCleared'));
     }
 }
 
-/**
- * Returns the current chat history.
- * @returns {Array<object>} The current chat history array.
- */
 export function getChatHistory() {
     return chatHistory;
+}
+
+export function getChatSessionList() {
+    return Object.entries(chatTitles).map(([id, title]) => ({ id, title }));
+}
+
+// ─── 세션 삭제 함수 ───
+// 사이드바 제목 목록에서 해당 세션을 지우고 UI를 갱신합니다
+export function deleteChatSession(sessionId) {
+    // 1) sessionId 키 삭제
+    delete chatTitles[sessionId];
+    // 2) 로컬스토리지에 반영
+    localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
+    // 3) ui용 로드 함수 호출 (기존 loadRecentChats 사용)
+    loadRecentChats();
+}
+
+export function clearChatSessionTitles() {
+    chatTitles = {}; // 모듈 내 변수 초기화
+    localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
 }

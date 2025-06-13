@@ -58,7 +58,10 @@ const translations = {
     passwordLabel: '비밀번호',
     passwordPlaceholderLogin: '비밀번호를 입력하세요',
     loginButton: '로그인',
+<<<<<<< HEAD
 	rememberMeLabel: '로그인 유지',
+=======
+>>>>>>> summerev0612-copy
     noAccount: '계정이 없으신가요?',
     signupLink: '회원가입',
     signupModalTitle: '회원가입',
@@ -73,7 +76,11 @@ const translations = {
     signupButton: '회원가입',
     alreadyAccount: '이미 계정이 있으신가요?',
     loginLink: '로그인',
+<<<<<<< HEAD
 	logoutButton: '로그아웃',
+=======
+    logoutButton: '로그아웃',
+>>>>>>> summerev0612-copy
     feedbackQuestion: '이 해석이 도움이 되었나요?',
     feedbackYes: '👍',
     feedbackNo: '👎',
@@ -133,6 +140,13 @@ const translations = {
     sampleEasyExplanationForTerm: (term) =>
       `쉽게 말해, ${term}은(는) 이럴 때 쓰는 말이에요...`,
     greetingKeyword: '안녕',
+    usageTips: "💡 사용 팁",
+    supportDocs: "📄 지원 문서",
+    precautions: "⚠️ 주의사항",
+    newChatTab: "새 대화",
+    exportChatBtn: "대화 내보내기",
+    clearAllChats: "대화 전체 삭제",
+
   },
   en: {
     logoText: 'LegalBot',
