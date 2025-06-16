@@ -1022,6 +1022,16 @@ export function changeLanguage(lang) {
     applyTranslations();
     // Note: loadChatHistoryFromStorage and loadRecentChats are called from main.js
     // after language change event is dispatched.
+	const selectedLanguageText = getTranslation(`${lang === 'ko' ? 'koreanTerm' :
+                                                  lang === 'en' ? 'englishTerm' :
+                                                  lang === 'ja' ? 'japaneseTerm' :
+                                                  lang === 'zh' ? 'chineseTerm' :
+                                                  lang === 'es' ? 'spanishTerm' : 'koreanTerm'}`);
+
+    const selectedLangSpan = document.getElementById('selectedLanguage');
+    if (selectedLangSpan) {
+        selectedLangSpan.textContent = `🌐 ${selectedLanguageText}`;
+    }
 }
 
 /**

@@ -4,7 +4,7 @@ import { loginUser, signupUser, logoutUser, getCurrentUser, isLoggedIn } from '.
 import {
     getTranslation, applyTranslations, changeLanguage,
     getCurrentInterpretationMode, setInterpretationMode,
-    getEnterKeySends, setEnterKeySends
+    getEnterKeySends, setEnterKeySends, getCurrentLanguage,
 } from './data/translation.js';
 import {
     loadRecentChats,
@@ -340,7 +340,28 @@ function restoreTabs() {
     loadChatHistoryFromStorage();
     loadRecentChats();
     renderRecentChats(getChatSessionList());
+	
+	document.querySelectorAll('#languageDropdown .dropdown-item').forEach((item) => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            const lang = this.getAttribute('data-lang');
+            changeLanguage(lang);  // translation.js에서 가져온 함수
+        });
+    });
 
+    // ✅ 초기 언어 버튼 텍스트 표시
+    const selectedLangSpan = document.getElementById('selectedLanguage');
+    if (selectedLangSpan) {
+        const langText = getTranslation(
+            getCurrentLanguage() === 'ko' ? 'koreanTerm' :
+            getCurrentLanguage() === 'en' ? 'englishTerm' :
+            getCurrentLanguage() === 'ja' ? 'japaneseTerm' :
+            getCurrentLanguage() === 'zh' ? 'chineseTerm' :
+            getCurrentLanguage() === 'es' ? 'spanishTerm' : 'koreanTerm'
+        );
+        selectedLangSpan.textContent = `🌐 ${langText}`;
+    }
+	
     // -------------------------------------------------------------
     // **수정된 부분: 로그인/회원가입/로그아웃 로직 및 UI 업데이트**
     // -------------------------------------------------------------
