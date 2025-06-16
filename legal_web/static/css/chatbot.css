@@ -444,7 +444,7 @@ body.dark-mode .send-button:disabled {
     /* 입력창과 버튼 간격 */
 }
 
-.add-btn {
+.fileAddBtn {
     flex: 0 0 auto;
     width: 32px;
     height: 32px;
@@ -472,18 +472,4 @@ body.dark-mode .send-button:disabled {
 
 .file-menu.hidden {
     display: none;
-}
-
-.file-add-btn {
-    display: block;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: none;
-    text-align: left;
-    cursor: pointer;
-}
-
-.file-add-btn:hover {
-    background: #f0f0f0;
 }

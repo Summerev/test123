@@ -24,12 +24,12 @@ import {
     initChatInputAutoResize,
     initExamplePrompts,
     initFileDragAndDrop,
-    initAttachmentUI,
     renderRecentChats,         // ← 추가
     createNewSession,
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
+import { initFileUploadModal } from './ui/fileUpLoadUI.js';
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -307,6 +307,7 @@ export function restoreTabs() {
 
 
 	document.addEventListener('DOMContentLoaded', () => {
+
     // 1. Initial Setup and State Loading
     applyTranslations();
     initThemeToggle();
@@ -333,8 +334,7 @@ export function restoreTabs() {
     initExamplePrompts();
     initFileDragAndDrop();
     initChatInputAutoResize();
-    initAttachmentUI();
-
+    initFileUploadModal();
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
     loadRecentChats();

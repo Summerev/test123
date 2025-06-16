@@ -248,63 +248,6 @@ export function initGlobalFileDropOverlay() {
     });
 }
 
-export function initAttachmentUI() {
-    const addBtn = $('#addBtn');
-    const fileMenu = $('#fileMenu');
-    const fileAdd = $('#fileAddBtn');
-    const fileInput = $('#fileInput');
-    const preview = $('#attachmentPreview');
-    const dropArea = $('#chatMessages').parentElement;
-
-    // + 버튼으로 메뉴 토글
-    on(addBtn, 'click', e => {
-        e.stopPropagation();
-        fileMenu.classList.toggle('hidden');
-    });
-    // 외부 클릭 시 메뉴 닫기
-    document.addEventListener('click', () => fileMenu.classList.add('hidden'));
-    // 메뉴에서 파일 추가 클릭
-    on(fileAdd, 'click', () => fileInput.click());
-    // 파일 선택 완료 시
-    on(fileInput, 'change', () => {
-        Array.from(fileInput.files).forEach(f => addPreview(f, preview));
-        fileInput.value = '';
-    });
-    // 드래그&드롭
-    on(dropArea, 'dragover', e => e.preventDefault());
-    on(dropArea, 'dragleave', e => e.preventDefault());
-    on(dropArea, 'drop', e => {
-        e.preventDefault();
-        Array.from(e.dataTransfer.files).forEach(f => addPreview(f, preview));
-    });
-}
-
-/** 첨부파일 썸네일/아이콘 + 삭제 버튼 생성 */
-function addPreview(file, preview) {
-    attachments.push(file);
-    const item = document.createElement('div');
-    item.className = 'attachment-item';
-    if (file.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        item.appendChild(img);
-    } else {
-        const ico = document.createElement('div');
-        ico.className = 'file-icon';
-        ico.textContent = file.name.split('.').pop().toUpperCase();
-        item.appendChild(ico);
-    }
-    const btn = document.createElement('button');
-    btn.className = 'remove-btn';
-    btn.textContent = '×';
-    on(btn, 'click', () => {
-        attachments = attachments.filter(f => f !== file);
-        item.remove();
-    });
-    item.appendChild(btn);
-    preview.appendChild(item);
-}
-
 /**
  * 최근 대화 목록 렌더링
  */

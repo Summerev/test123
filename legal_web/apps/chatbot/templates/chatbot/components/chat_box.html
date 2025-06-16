@@ -4,7 +4,16 @@
   <div class="tab-bar" id="tabBar"></div>
 
   <!-- 🔹 헤더 -->
-
+  <!-- <div class="chat-header">
+    {% if mode == "contract" %}
+      <h2>📄 계약서 모드</h2>
+      <p>계약서의 조항과 내용을 쉽게 해석해드립니다.</p>
+    {% elif mode == "policy" %}
+      <h2>📃 약관 해석 모드</h2>
+      <p>서비스 약관, 개인정보처리방침 등을 쉽게 설명해드립니다.</p>
+    {% endif %}
+  </div> -->
+  
 
   <!-- ✨ 첨부파일 미리보기 영역 -->
   <div id="attachmentPreview" class="attachment-preview"></div>
@@ -33,8 +42,8 @@
   <!-- 🔹 입력창 영역 -->
   <div class="chat-input-container">
     <div class="chat-input-wrapper">
-      <!-- + 버튼: 파일 메뉴 토글 -->
-      <button id="addBtn" type="button" class="add-btn">+</button>
+      <!-- + 버튼: 파일 업로드 모달 오픈 -->
+      <button id="fileAddBtn" type="button" class="fileAddBtn">+</button>
       <!-- 숨김 파일 입력 -->
       <input
         id="fileInput"
@@ -58,13 +67,6 @@
         id="sendButton"
         data-translate-key="sendButton"
       >전송</button>
-
-      <!-- 파일 메뉴: + 버튼 누르면 이 안에 표시 -->
-      <div id="fileMenu" class="file-menu hidden">
-        <button id="fileAddBtn" type="button" class="file-add-btn">
-          📁 사진 및 파일 추가
-        </button>
-      </div>
     </div>
   </div>
 
