@@ -10,7 +10,7 @@ import {
 } from '../data/chatHistoryManager.js';
 import { handleFileUpload } from '../logic/chatProcessor.js';
 import { switchTab as selectTab, openTabs, createTab } from '../main.js';
-import { deleteChatSession } from '../data/chatHistoryManager.js';
+import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 
 let attachments = [];
 const chatInput = $('#chatInput');
