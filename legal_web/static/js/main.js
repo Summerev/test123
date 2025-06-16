@@ -15,7 +15,7 @@ import {
     saveChatHistoryWithTitle,   // ← 추가
     getChatSessionList,
 } from './data/chatHistoryManager.js';
-import { clearChatSessionTitles } from './data/chatHistoryManager.js';
+import { clearChatSessionTitles, getChatTitle  } from './data/chatHistoryManager.js';
 import { initThemeToggle } from './ui/themeToggle.js';
 import { initDropdowns } from './ui/dropdowns.js';
 import { initCollapsibles } from './ui/sidebarCollapsible.js';
@@ -29,6 +29,7 @@ import {
 
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
+import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -58,16 +59,8 @@ const navUserDisplayName = $('#user-display-name');
 // 로그인 유지 체크박스
 const rememberMeCheckbox = $('#rememberMe'); 
 
-export let openTabs = JSON.parse(localStorage.getItem('open_tabs')) || [];
-export let activeTab = localStorage.getItem('active_tab') || null;
-export let chatSessions = JSON.parse(localStorage.getItem('chat_sessions')) || {};
-
 // --- Core Functions ---
-export function saveTabState() {
-    localStorage.setItem('open_tabs', JSON.stringify(openTabs));
-    localStorage.setItem('active_tab', activeTab);
-    localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
-}
+
 
 export function generateSessionId() {
     return 'session_' + Date.now();
@@ -123,32 +116,31 @@ export function createTab(sessionId, title, shouldSwitch = true, skipPush = fals
     const closeBtn = document.createElement('span');
     closeBtn.textContent = '×';
     closeBtn.classList.add('close-tab');
-    closeBtn.onclick = e => { e.stopPropagation(); closeTab(sessionId); };
+    closeBtn.onclick = e => { e.stopPropagation(); closeTabUI(sessionId); };
 
     tab.onclick = () => switchTab(sessionId);
+
     tab.appendChild(titleSpan);
     tab.appendChild(closeBtn);
     tabBar.appendChild(tab);
 
-    // 3) 자동 전환
-    if (shouldSwitch) {
-        tabBar.scrollLeft = tabBar.scrollWidth;
-        activeTab = sessionId;
-        switchTab(sessionId);
+    // 3) 상태 저장
+    if (!skipPush) {
+        openTabs[sessionId] = { title };
+        saveTabState();
     }
 
-    // 4) 상태 저장 후 렌더링 및 스크롤 조정
-    if (!skipPush) {
-        openTabs.push({ id: sessionId, title });
-        saveTabState();
-        renderTabs();   // ← 여기에만 있어야 함
-    }
+    if (shouldSwitch) {
+		setActiveTab(sessionId);
+		switchTab(sessionId); // ✅ 이때 .active 붙음 + 메시지 출력
+		tabBar.scrollLeft = tabBar.scrollWidth;
+	}
 }
 
 
 
 export function switchTab(sessionId) {
-    activeTab = sessionId;
+    setActiveTab(sessionId);
     localStorage.setItem('active_tab', sessionId);
 
     [...tabBar.children].forEach(tab => {
@@ -167,22 +159,18 @@ export function switchTab(sessionId) {
     }
 }
 
-function closeTab(sessionId) {
-    openTabs = openTabs.filter(t => t.id !== sessionId);
+function closeTabUI(sessionId) {
+  closeTabState(sessionId);  // 상태만 변경
 
-    if (activeTab === sessionId) {
-        activeTab = openTabs.length > 0 ? openTabs[0].id : null;
-    }
+  renderTabs();  // 탭 UI 다시 그리기
 
-    saveTabState();
-    renderTabs();
-
-    if (activeTab) {
-        switchTab(activeTab);
-    } else {
-        chatMessages.innerHTML = '';
-        welcomeMessage.classList.remove('hidden');
-    }
+  const currentTab = getActiveTab();  // ✅ 최신 activeTab 사용
+  if (currentTab) {
+    switchTab(currentTab);
+  } else {
+    chatMessages.innerHTML = '';
+    welcomeMessage.classList.remove('hidden');
+  }
 }
 
 function updateTabTitle(sessionId, newTitle) {
@@ -195,9 +183,9 @@ function updateTabTitle(sessionId, newTitle) {
         tab.dataset.sessionTitle = newTitle;
     }
 
-    const tabIndex = openTabs.findIndex(t => t.id === sessionId);
-    if (tabIndex !== -1) {
-        openTabs[tabIndex].title = newTitle;
+    // ✅ 객체 구조에 맞게 수정
+    if (openTabs[sessionId]) {
+        openTabs[sessionId].title = newTitle;
         saveTabState();
     }
 }
@@ -206,25 +194,27 @@ export function handleSendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
+    const currentTabId = getActiveTab();
+
     // ✅ 세션이 없다면 새로 생성
-    if (!activeTab || !chatSessions[activeTab]) {
+    if (!currentTabId || !chatSessions[currentTabId]) {
         const sessionId = generateSessionId();
         chatSessions[sessionId] = [];
-        activeTab = sessionId;
+        setActiveTab(sessionId);
 
         // ✅ 탭 목록에 추가 (중복 방지)
-        if (!openTabs.some(t => t.id === sessionId)) {
-            openTabs.push({ id: sessionId, title: '새 대화' });
+        if (!openTabs[sessionId]) {
+            openTabs[sessionId] = { title: '새 대화' };
         }
 
-        // ✅ 탭 UI 렌더링 및 선택
         renderTabs();
         switchTab(sessionId);
 
-        // ✅ 최근 대화 사이드바 반영
         saveChatHistoryWithTitle(sessionId, '새 대화');
         renderRecentChats(getChatSessionList());
     }
+
+    const tabId = getActiveTab();  // 세션 생성 후 다시 읽음 (최신 보장)
 
     // ✅ 사용자 메시지 저장 및 UI 추가
     const userMsg = {
@@ -232,42 +222,53 @@ export function handleSendMessage() {
         text,
         timestamp: new Date().toISOString()
     };
-    chatSessions[activeTab].push(userMsg);
+
+    if (!chatSessions[tabId]) {
+        chatSessions[tabId] = [];
+    }
+
+    chatSessions[tabId].push(userMsg);
     addMessageToUI(userMsg);
     saveTabState();
 
     // ✅ 첫 메시지일 경우 탭 제목 업데이트
-    if (chatSessions[activeTab].length === 1) {
-    const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
-    saveChatHistoryWithTitle(activeTab, title);
+    if (chatSessions[tabId].length === 1) {
+        const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
+        saveChatHistoryWithTitle(tabId, title);
 
-    // ✅ 탭 객체도 업데이트
-    const tab = openTabs.find(t => t.id === activeTab);
-    if (tab) tab.title = title;
+        if (openTabs[tabId]) {
+            openTabs[tabId].title = title;
+        }
 
-    renderTabs(); // 탭 UI 갱신
-    renderRecentChats(getChatSessionList()); // 사이드바 갱신
-	}
+        renderTabs();
+        renderRecentChats(getChatSessionList());
+    }
 
-    // ✅ 입력창 초기화
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendButton.disabled = true;
     welcomeMessage.classList.add('hidden');
 
-    // ✅ 봇 응답 처리
     processUserMessage(text);
 }
 
 
+
 async function processUserMessage(text) {
     const responseText = `"${text}"에 대한 기본 설명입니다.`;
+
     const msg = {
         sender: 'bot',
         text: responseText,
         timestamp: new Date().toISOString()
     };
-    chatSessions[activeTab].push(msg);
+
+    const activeTabId = getActiveTab(); // ✅ 항상 최신 탭 ID 사용
+    if (!chatSessions[activeTabId]) {
+        chatSessions[activeTabId] = [];
+    }
+
+    chatSessions[activeTabId].push(msg);
     saveTabState();
     addMessageToUI(msg);
 }
@@ -277,20 +278,22 @@ export function renderTabs() {
     if (!tabBar) return;
     tabBar.innerHTML = '';
 
-    openTabs.forEach(t => createTab(t.id, t.title, false, true));
+    Object.entries(openTabs).forEach(([id, tab]) => {
+        const title = getChatTitle(id) || tab.title || '새 대화';
+        const isActive = id === getActiveTab(); // 🔥 activeTab이면 shouldSwitch = true
+        createTab(id, title, isActive, true);
+    });
 
     requestAnimationFrame(() => {
         const children = tabBar.children;
         const total = children.length;
         const visible = Math.min(total, 10);
 
-        // 10개 이하일 땐 고정 해제
         if (total <= 10) {
             tabBar.style.width = '';
             return;
         }
 
-        // 첫 10개 탭 너비 합산
         let sum = 0;
         for (let i = 0; i < visible; i++) {
             const tab = children[i];
@@ -298,19 +301,19 @@ export function renderTabs() {
                 sum += tab.getBoundingClientRect().width;
             }
         }
-        // 탭 사이 gap(6px) 추가
         sum += (visible - 1) * 6;
 
-        // ★ 여기서 width만 설정
         tabBar.style.width = sum + 'px';
     });
 }
 
+
 export function restoreTabs() {
-    if (openTabs.length > 0) {
+    if (Object.keys(openTabs).length > 0) {
         renderTabs();
-        if (activeTab) {
-            switchTab(activeTab);
+        const currentTabId = getActiveTab();
+        if (currentTabId) {
+            switchTab(currentTabId);
         }
     }
 }
@@ -346,11 +349,13 @@ export function restoreTabs() {
     initFileDragAndDrop();
     initChatInputAutoResize();
     initAttachmentUI();
-    restoreTabs();
 
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
     loadRecentChats();
+
+	restoreTabs();
+
     renderRecentChats(getChatSessionList());
 	
 	document.querySelectorAll('#languageDropdown .dropdown-item').forEach((item) => {
@@ -573,7 +578,7 @@ if (signupForm) {
             // ① 새 세션 메시지 배열 초기화
             chatSessions[sessionId] = [];
             // ② activeTab 세팅
-            activeTab = sessionId;
+            setActiveTab(sessionId);
             // ③ 세션 타이틀 저장소에 등록
             saveChatHistoryWithTitle(sessionId, '새 대화');
             // ④ 사이드바 목록 갱신
@@ -584,21 +589,14 @@ if (signupForm) {
     }
     // … 나머
 
-    if (!activeTab) {
-        chatMessages.innerHTML = '';
-        welcomeMessage.classList.remove('hidden');
-        chatMessages.appendChild(welcomeMessage);
-        sendButton.disabled = false;
-    }
-    // …이하 기존 핸들러…
+    const activeTabId = getActiveTab();
 
-
-    if (!activeTab) {
-        chatMessages.innerHTML = '';
-        welcomeMessage.classList.remove('hidden');
-        chatMessages.appendChild(welcomeMessage);
-        sendButton.disabled = false;
-    }
+    if (!activeTabId) {
+    chatMessages.innerHTML = '';
+    welcomeMessage.classList.remove('hidden');
+    chatMessages.appendChild(welcomeMessage);
+    sendButton.disabled = false;
+   }
 
     const usageTipsBtn = document.querySelector('button[data-translate-key="usageTips"]');
     const supportDocsBtn = document.querySelector('button[data-translate-key="supportDocs"]');
@@ -621,33 +619,37 @@ if (signupForm) {
     }
 
     if (exportChatButton) {
-        on(exportChatButton, 'click', () => {
-            const history = chatSessions[activeTab] || [];
-            if (history.length === 0) {
-                alert(getTranslation('noRecentChats'));
-                return;
-            }
-            const formattedChat = history.map(msg =>
-                `[${formatTimestamp(msg.timestamp)}] ${msg.sender === 'user' ? 'User' : getTranslation('botName')}:\n${msg.text}`
-            ).join('\n\n');
-            const blob = new Blob([formattedChat], { type: 'text/plain;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `legalbot_chat_${new Date().toISOString().slice(0, 10)}.txt`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-        });
-    }
+    on(exportChatButton, 'click', () => {
+        const currentTabId = getActiveTab(); // ✅ 최신 상태 보장
+        const history = chatSessions[currentTabId] || [];
+
+        if (history.length === 0) {
+            alert(getTranslation('noRecentChats'));
+            return;
+        }
+
+        const formattedChat = history.map(msg =>
+            `[${formatTimestamp(msg.timestamp)}] ${msg.sender === 'user' ? 'User' : getTranslation('botName')}:\n${msg.text}`
+        ).join('\n\n');
+
+        const blob = new Blob([formattedChat], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `legalbot_chat_${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    });
+}
 
     // 모든 대화 삭제 버튼 (공통)
     if (clearChatButton) {
         on(clearChatButton, 'click', () => {
             if (confirm(getTranslation('confirmClearAllChats'))) {
                 chatSessions = {};
-                openTabs = [];
-                activeTab = null;
+                openTabs = {};
+                setActiveTab(null);
                 saveTabState();
                 tabBar.innerHTML = '';
                 chatMessages.innerHTML = '';
