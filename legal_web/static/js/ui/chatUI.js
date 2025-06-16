@@ -9,9 +9,9 @@ import {
     getChatHistory,
 } from '../data/chatHistoryManager.js';
 import { handleFileUpload } from '../logic/chatProcessor.js';
-import { switchTab as selectTab, createTab } from '../main.js';
+import { switchTab as selectTab, createTab, renderTabs, generateSessionId, switchTab } from '../main.js';
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
-import { openTabs, chatSessions } from '../state/chatTabState.js';
+import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
 
 let attachments = [];
 const chatInput = $('#chatInput');
@@ -385,13 +385,21 @@ function createContextMenu(id, title) {
     return menu;
 }
 
-function createNewSession() {
-    loadChatHistoryFromStorage();
-    const newId = crypto.randomUUID();
-    saveChatHistoryWithTitle(newId, '새 대화');
-    renderRecentChats(getChatHistory());
-    document.addEventListener('click', closeAllContextMenus);
-    selectTab(newId);
+export function createNewSession() {
+    const sessionId = generateSessionId();
+    chatSessions[sessionId] = [];
+    setActiveTab(sessionId);
+
+    if (!openTabs[sessionId]) {
+        openTabs[sessionId] = { title: '새 대화' };
+    }
+
+    renderTabs();
+    switchTab(sessionId);
+    saveChatHistoryWithTitle(sessionId, '새 대화');
+    renderRecentChats(getChatSessionList());
+
+    return sessionId;  // 이게 핵심
 }
 
 function handleRename(id, oldTitle) {

@@ -26,7 +26,7 @@ import {
     initFileDragAndDrop,
     initAttachmentUI,
     renderRecentChats,         // ← 추가
-
+    createNewSession,
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
@@ -194,27 +194,12 @@ export function handleSendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    const currentTabId = getActiveTab();
+    let currentTabId = getActiveTab();
 
     // ✅ 세션이 없다면 새로 생성
     if (!currentTabId || !chatSessions[currentTabId]) {
-        const sessionId = generateSessionId();
-        chatSessions[sessionId] = [];
-        setActiveTab(sessionId);
-
-        // ✅ 탭 목록에 추가 (중복 방지)
-        if (!openTabs[sessionId]) {
-            openTabs[sessionId] = { title: '새 대화' };
-        }
-
-        renderTabs();
-        switchTab(sessionId);
-
-        saveChatHistoryWithTitle(sessionId, '새 대화');
-        renderRecentChats(getChatSessionList());
+        currentTabId = createNewSession();
     }
-
-    const tabId = getActiveTab();  // 세션 생성 후 다시 읽음 (최신 보장)
 
     // ✅ 사용자 메시지 저장 및 UI 추가
     const userMsg = {
@@ -223,21 +208,21 @@ export function handleSendMessage() {
         timestamp: new Date().toISOString()
     };
 
-    if (!chatSessions[tabId]) {
-        chatSessions[tabId] = [];
+    if (!chatSessions[currentTabId]) {
+        chatSessions[currentTabId] = [];
     }
 
-    chatSessions[tabId].push(userMsg);
+    chatSessions[currentTabId].push(userMsg);
     addMessageToUI(userMsg);
     saveTabState();
 
     // ✅ 첫 메시지일 경우 탭 제목 업데이트
-    if (chatSessions[tabId].length === 1) {
+    if (chatSessions[currentTabId].length === 1) {
         const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
-        saveChatHistoryWithTitle(tabId, title);
+        saveChatHistoryWithTitle(currentTabId, title);
 
-        if (openTabs[tabId]) {
-            openTabs[tabId].title = title;
+        if (openTabs[currentTabId]) {
+            openTabs[currentTabId].title = title;
         }
 
         renderTabs();
@@ -572,21 +557,11 @@ if (signupForm) {
     // ─── 새 대화 버튼 클릭 시 사이드바에만 추가 ───
 
     const newTabButton = $('#newTabButton');
-    if (newTabButton) {
-        on(newTabButton, 'click', () => {
-            const sessionId = generateSessionId();
-            // ① 새 세션 메시지 배열 초기화
-            chatSessions[sessionId] = [];
-            // ② activeTab 세팅
-            setActiveTab(sessionId);
-            // ③ 세션 타이틀 저장소에 등록
-            saveChatHistoryWithTitle(sessionId, '새 대화');
-            // ④ 사이드바 목록 갱신
-            renderRecentChats(getChatSessionList());
-            // ⑤ 바로 해당 세션으로 전환 (UI)
-            switchTab(sessionId);
-        });
-    }
+if (newTabButton) {
+    on(newTabButton, 'click', () => {
+        createNewSession(); // ✅ 이제 이 한 줄이면 모든 상태 + UI + 탭 생성 완료
+    });
+}
     // … 나머
 
     const activeTabId = getActiveTab();
