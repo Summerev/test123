@@ -362,6 +362,16 @@ body.dark-mode .send-button:disabled {
     overflow-x: auto !important;
     overflow-y: hidden !important;
     white-space: nowrap !important;
+
+    height: 50px;
+    min-height: 50px;
+    padding: 4px 8px;
+    border-bottom: 1px solid #ddd;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+
+    border-radius: 0.75rem 0.75rem 0 0;
+	
 }
 
 /* 드래그 중일 때 채팅창 강조 */
