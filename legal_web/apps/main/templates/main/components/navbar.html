@@ -1,96 +1,53 @@
 <header>
-  <nav>
-    <div class="nav-left">
-      <!-- 로고 새로고침은 현재 그대로 유지 (인라인 JS 허용 범위) -->
-      <a href="javascript:location.reload();" class="logo" title="새로고침">
-        <div class="logo-icon">⚖️</div>
-        <span data-translate-key="logoText">LegalBot</span>
-      </a>
-      <!-- id="themeToggle"은 그대로 유지, onclick 제거됨 -->
-      <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
-        <span class="theme-icon">🌙</span>
-      </button>
-    </div>
+	<nav>
+		<!-- 네비 바 왼쪽 -->
+		<div class="nav-left">
+			<!-- 로고(새로고침) -->
+			<a href="javascript:location.reload();" class="logo" title="새로고침">
+				<div class="logo-icon">⚖️</div>
+				<span data-translate-key="logoText">LegalBot</span>
+			</a>
+			<!-- 테마 토글 -->
+			<button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+				<span class="theme-icon">🌙</span>
+			</button>
 
-    <div class="nav-center">
-      <div class="features-menu">
-        <!-- onclick 속성 제거 -->
-        <button class="features-btn">
-          <span data-translate-key="mainFeatures">📋 주요 기능</span>
-          <span class="dropdown-icon">▼</span>
-        </button>
-        <!-- id="featuresDropdown"은 그대로 유지 -->
-        <div class="features-dropdown" id="featuresDropdown">
-          <a
-            href="#"
-            class="dropdown-item"
-            data-translate-key="featureContractAnalysis"
-            >계약서 조항 해석</a
-          >
-          <a
-            href="#"
-            class="dropdown-item"
-            data-translate-key="featureLegalTermExplain"
-            >법률 용어 설명</a
-          >
-          <a
-            href="#"
-            class="dropdown-item"
-            data-translate-key="featureDocSummary"
-            >문서 요약</a
-          >
-          <a
-            href="#"
-            class="dropdown-item"
-            data-translate-key="featureConditionAnalysis"
-            >조건 분석</a
-          >
-          <a
-            href="#"
-            class="dropdown-item"
-            data-translate-key="featureRiskIdentification"
-            >위험 요소 식별</a
-          >
-        </div>
-      </div>
+			<!-- 사용 정보 모달 버튼들 (💡📄⚠️만 포함) -->
+			<div class="info-buttons-group">
+				<button class="info-btn" data-translate-key="usageTips">💡 사용 팁</button>
+				<button class="info-btn" data-translate-key="supportDocs">📄 지원 문서</button>
+				<button class="info-btn" data-translate-key="precautions">⚠️ 주의사항</button>
+			</div>
+		</div>
 
-      <div class="language-selector">
-        <!-- onclick 속성 제거 -->
-        <button class="language-btn">
-          <span data-translate-key="language">🌐 언어</span>
-          <span class="dropdown-icon">▼</span>
-        </button>
-        <!-- id="languageDropdown"은 그대로 유지 -->
-        <div class="language-dropdown" id="languageDropdown">
-          <!-- 각 언어 링크의 onclick 속성 제거 -->
-          <a href="#" class="dropdown-item" data-lang="ko"
-            ><span data-translate-key="koreanTerm">한국어</span></a
-          >
-          <a href="#" class="dropdown-item" data-lang="en"
-            ><span data-translate-key="englishTerm">English</span></a
-          >
-          <a href="#" class="dropdown-item" data-lang="ja"
-            ><span data-translate-key="japaneseTerm">日本語</span></a
-          >
-          <a href="#" class="dropdown-item" data-lang="zh"
-            ><span data-translate-key="chineseTerm">中文</span></a
-          >
-          <a href="#" class="dropdown-item" data-lang="es"
-            ><span data-translate-key="spanishTerm">Español</span></a
-          >
-        </div>
-      </div>
-    </div>
+		<!-- 네비 바 중앙 타이틀 -->
+		<div class="nav-center-title">
+			<h2 data-translate-key="chatHeaderTitle">법률 AI 어시스턴트</h2>
+			<p data-translate-key="chatHeaderSubtitle">복잡한 법률 문서를 쉽게 이해하세요</p>
+		</div>
 
-    <div class="auth-buttons">
-      <a href="#" id="login-button" class="btn-login"
-        data-translate-key="loginButton">로그인</a>
-	  <a href="#" id="signup-button" class="btn-signup"
-        data-translate-key="signupButton">회원가입</a>
-	  <span id="user-display-name" class="user-info" style="display: none; margin-right: 10px;"></span>
+		<!-- 언어 선택 및 인증 -->
+		<div class="auth-buttons">
+		<!-- 언어 선택기 -->
+			<div class="language-selector">
+				<button class="language-btn">
+					<span data-translate-key="language">🌐 언어</span>
+					<span class="dropdown-icon">▼</span>
+				</button>
+				<div class="language-dropdown" id="languageDropdown">
+					<a href="#" class="dropdown-item" data-lang="ko"><span data-translate-key="koreanTerm">한국어</span></a>
+					<a href="#" class="dropdown-item" data-lang="en"><span data-translate-key="englishTerm">English</span></a>
+					<a href="#" class="dropdown-item" data-lang="ja"><span data-translate-key="japaneseTerm">日本語</span></a>
+					<a href="#" class="dropdown-item" data-lang="zh"><span data-translate-key="chineseTerm">中文</span></a>
+					<a href="#" class="dropdown-item" data-lang="es"><span data-translate-key="spanishTerm">Español</span></a>
+				</div>
+			</div>
 
-      <a href="#" id="logout-button" class="btn-signout" style="display: none;"
-        data-translate-key="logoutButton">로그아웃</a>
-    </div>
-  </nav>
+			<!-- 로그인/회원가입 -->
+			<a href="#" id="login-button" class="btn-login" data-translate-key="loginButton">로그인</a>
+			<a href="#" id="signup-button" class="btn-signup" data-translate-key="signupButton">회원가입</a>
+			<span id="user-display-name" class="user-info" style="display: none; margin-right: 10px;"></span>
+			<a href="#" id="logout-button" class="btn-signout" style="display: none;" data-translate-key="logoutButton">로그아웃</a>
+		</div>
+	</nav>
 </header>

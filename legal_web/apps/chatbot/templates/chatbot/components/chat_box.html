@@ -1,39 +1,79 @@
-<main class="chat-container">
+<main class="chat-container" data-mode="{{ mode }}">
+
+  <!-- 🔹 탭 바 -->
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- 🔹 헤더 -->
   <div class="chat-header">
-    <h2 data-translate-key="chatHeaderTitle">법률 AI 어시스텐트</h2>
-    <p data-translate-key="chatHeaderSubtitle">보급한 법률 문서를 쉽게 이해하세요</p>
+    {% if mode == "contract" %}
+      <h2>📄 계약서 모드</h2>
+      <p>계약서의 조항과 내용을 쉽게 해석해드립니다.</p>
+    {% elif mode == "policy" %}
+      <h2>📃 약관 해석 모드</h2>
+      <p>서비스 약관, 개인정보처리방침 등을 쉽게 설명해드립니다.</p>
+    {% endif %}
   </div>
 
+  <!-- ✨ 첨부파일 미리보기 영역 -->
+  <div id="attachmentPreview" class="attachment-preview"></div>
+
+  <!-- 🔹 메시지 출력 영역 -->
   <div class="chat-messages" id="chatMessages">
-    <div id="welcomeMessage" class="welcome-message hidden">
+    <div id="welcomeMessage" class="welcome-message">
       <div class="welcome-icon">⚖️</div>
-      <h3 data-translate-key="welcomeTitle">안녕하세요! 법률 AI 어시스텐트입니다</h3>
-      <p data-translate-key="welcomeDesc">법률 문서의 보급한 내용을 쉽게 설명해드립니다.</p>
+      <h3 data-translate-key="welcomeTitle">안녕하세요! 법률 AI 어시스턴트입니다</h3>
+      <p data-translate-key="welcomeDesc">법률 문서의 복잡한 내용을 쉽게 설명해드립니다.</p>
 
       <div class="example-prompts">
-        <div class="example-prompt" data-prompt-text="계약서 조합 설명해줘">
-          "계약서 조합 설명해줘"
+        <div class="example-prompt" data-prompt-text="계약서 조항 설명해줘">
+          "계약서 조항 설명해줘"
         </div>
         <div class="example-prompt" data-prompt-text="노동법 관련 판례 찾아줘">
           "노동법 관련 판례 찾아줘"
         </div>
-        <div class="example-prompt" data-prompt-text="용억 계약서 작성 도와줘">
-          "용억 계약서 작성 도와줘"
+        <div class="example-prompt" data-prompt-text="용역 계약서 작성 도와줘">
+          "용역 계약서 작성 도와줘"
         </div>
       </div>
     </div>
   </div>
 
+  <!-- 🔹 입력창 영역 -->
   <div class="chat-input-container">
     <div class="chat-input-wrapper">
+      <!-- + 버튼: 파일 메뉴 토글 -->
+      <button id="addBtn" type="button" class="add-btn">+</button>
+      <!-- 숨김 파일 입력 -->
+      <input
+        id="fileInput"
+        type="file"
+        accept=".pdf,.docx,.hwp,image/*"
+        multiple
+        hidden
+      />
+
+      <!-- 기존 텍스트 입력창 -->
       <textarea
         class="chat-input"
         id="chatInput"
-        placeholder="법률 문서나 조합을 입력하거나, 질문을 입력하세요..."
+        placeholder="법률 문서나 조항을 입력하거나, 질문을 입력하세요..."
         rows="1"
         data-translate-key-placeholder="chatPlaceholder"
       ></textarea>
-      <button class="send-button" id="sendButton" data-translate-key="sendButton">전송</button>
+      <!-- 전송 버튼 -->
+      <button
+        class="send-button"
+        id="sendButton"
+        data-translate-key="sendButton"
+      >전송</button>
+
+      <!-- 파일 메뉴: + 버튼 누르면 이 안에 표시 -->
+      <div id="fileMenu" class="file-menu hidden">
+        <button id="fileAddBtn" type="button" class="file-add-btn">
+          📁 사진 및 파일 추가
+        </button>
+      </div>
     </div>
   </div>
+
 </main>

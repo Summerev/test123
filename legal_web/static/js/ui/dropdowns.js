@@ -11,10 +11,12 @@ function toggleDropdown(dropdownElement, buttonElement) {
     if (!dropdownElement || !buttonElement) return;
 
     // Close other active dropdowns
-    $$('.features-dropdown.active, .language-dropdown.active').forEach((activeDropdown) => {
+    $$('.language-dropdown.active').forEach((activeDropdown) => {
         if (activeDropdown !== dropdownElement) {
             removeClass(activeDropdown, 'active');
-            const activeIcon = activeDropdown.previousElementSibling ? activeDropdown.previousElementSibling.querySelector('.dropdown-icon') : null;
+            const activeIcon = activeDropdown.previousElementSibling
+                ? activeDropdown.previousElementSibling.querySelector('.dropdown-icon')
+                : null;
             if (activeIcon) activeIcon.style.transform = 'rotate(0deg)';
         }
     });
@@ -22,86 +24,45 @@ function toggleDropdown(dropdownElement, buttonElement) {
     toggleClass(dropdownElement, 'active');
     const icon = buttonElement.querySelector('.dropdown-icon');
     if (icon) {
-        if (dropdownElement.classList.contains('active')) {
-            icon.style.transform = 'rotate(180deg)';
-        } else {
-            icon.style.transform = 'rotate(0deg)';
-        }
+        icon.style.transform = dropdownElement.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 }
 
 /**
- * Initializes dropdown menu functionalities.
- * - Adds click listeners to toggle dropdowns.
- * - Closes dropdowns when clicking outside.
- * - Handles clicks on dropdown items to trigger actions.
+ * Initializes dropdown menu functionalities (언어 선택만).
  */
 export function initDropdowns() {
-    const featureMenu = $('.features-menu');
     const languageMenu = $('.language-selector');
-
-    const featureBtn = $('.features-btn', featureMenu);
     const languageBtn = $('.language-btn', languageMenu);
+    const languageDropdown = $('#languageDropdown', languageMenu);
 
-    const featureDropdown = $('#featuresDropdown', featureMenu); // Use ID for dropdown
-    const languageDropdown = $('#languageDropdown', languageMenu); // Use ID for dropdown
-
-    // Add click event listeners to each dropdown button
-    if (featureBtn && featureDropdown) {
-        on(featureBtn, 'click', (e) => {
-            e.stopPropagation(); // Prevent event bubbling
-            toggleDropdown(featureDropdown, featureBtn);
-        });
-    }
-
+    // 언어 드롭다운 버튼
     if (languageBtn && languageDropdown) {
         on(languageBtn, 'click', (e) => {
-            e.stopPropagation(); // Prevent event bubbling
+            e.stopPropagation();
             toggleDropdown(languageDropdown, languageBtn);
+        });
+
+        $$('#languageDropdown .dropdown-item').forEach((item) => {
+            on(item, 'click', function (e) {
+                e.preventDefault();
+                const lang = this.dataset.lang;
+                if (lang) {
+                    document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
+                }
+                removeClass(languageDropdown, 'active');
+                const icon = languageBtn.querySelector('.dropdown-icon');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            });
         });
     }
 
-    // Add click event listener to the document to close dropdowns when clicking outside
+    // 외부 클릭 시 드롭다운 닫기
     on(document, 'click', (e) => {
-        if (featureDropdown && featureDropdown.classList.contains('active') && !featureMenu.contains(e.target)) {
-            removeClass(featureDropdown, 'active');
-            const icon = featureBtn ? featureBtn.querySelector('.dropdown-icon') : null;
-            if (icon) icon.style.transform = 'rotate(0deg)';
-        }
         if (languageDropdown && languageDropdown.classList.contains('active') && !languageMenu.contains(e.target)) {
             removeClass(languageDropdown, 'active');
-            const icon = languageBtn ? languageBtn.querySelector('.dropdown-icon') : null;
+            const icon = languageBtn.querySelector('.dropdown-icon');
             if (icon) icon.style.transform = 'rotate(0deg)';
         }
-    });
-
-    // Feature dropdown item click event
-    $$('#featuresDropdown .dropdown-item').forEach((item) => {
-        on(item, 'click', function (e) {
-            e.preventDefault();
-            const featureKey = this.getAttribute('data-translate-key');
-            const featureName = getTranslation(featureKey) || this.textContent;
-            console.log('Navigating to (simulated):', featureName);
-            alert(getTranslation('alertFeatureNavigation', featureName)); // Use custom modal instead of alert
-
-            if (featureDropdown) removeClass(featureDropdown, 'active');
-            const icon = featureBtn ? featureBtn.querySelector('.dropdown-icon') : null;
-            if (icon) icon.style.transform = 'rotate(0deg)';
-        });
-    });
-
-    // Language dropdown item click event (dispatches custom event)
-    $$('#languageDropdown .dropdown-item').forEach((item) => {
-        on(item, 'click', function (e) {
-            e.preventDefault();
-            const lang = this.dataset.lang; // HTML needs data-lang="en" etc.
-            if (lang) {
-                // Dispatch a custom event for language change, main.js will listen
-                document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
-            }
-            if (languageDropdown) removeClass(languageDropdown, 'active');
-            const icon = languageBtn ? languageBtn.querySelector('.dropdown-icon') : null;
-            if (icon) icon.style.transform = 'rotate(0deg)';
-        });
     });
 }

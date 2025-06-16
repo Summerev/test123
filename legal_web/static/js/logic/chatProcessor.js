@@ -1,9 +1,22 @@
 // static/js/logic/chatProcessor.js
 import { sendMessageToBot } from '../api/chatAPI.js';
-import { getTranslation, getLegalTerms, getCurrentInterpretationMode, generateMessageId, addFeedbackData } from '../data/translation.js'; // Import necessary functions from translation.js
-import { addMessageToChatAndHistory, getChatHistory } from '../data/chatHistoryManager.js';
-import { addMessageToUI, scrollToBottom, toggleWelcomeMessage } from '../ui/chatUI.js';
-import { closeModal } from '../ui/modalManager.js'; // Import closeModal for feedback modal
+import {
+    getTranslation,
+    getLegalTerms,
+    getCurrentInterpretationMode,
+    generateMessageId,
+    addFeedbackData
+} from '../data/translation.js';
+import {
+    addMessageToChatAndHistory,
+    getChatHistory
+} from '../data/chatHistoryManager.js';
+import {
+    addMessageToUI,
+    scrollToBottom,
+    toggleWelcomeMessage
+} from '../ui/chatUI.js';
+import { closeModal } from '../ui/modalManager.js';
 
 /**
  * Processes user input, sends it to the chatbot API, and displays the response.
@@ -12,44 +25,69 @@ import { closeModal } from '../ui/modalManager.js'; // Import closeModal for fee
 export async function processUserMessage(userInput) {
     const currentMode = getCurrentInterpretationMode();
     const currentLanguage = getTranslation('koreanTerm') === '한국어' ? 'ko' :
-                           getTranslation('englishTerm') === 'English' ? 'en' :
-                           getTranslation('japaneseTerm') === '日本語' ? 'ja' :
-                           getTranslation('chineseTerm') === '中文' ? 'zh' :
-                           getTranslation('spanishTerm') === 'Español' ? 'es' : 'ko'; // Get actual language
+                            getTranslation('englishTerm') === 'English' ? 'en' :
+                            getTranslation('japaneseTerm') === '日本語' ? 'ja' :
+                            getTranslation('chineseTerm') === '中文' ? 'zh' :
+                            getTranslation('spanishTerm') === 'Español' ? 'es' : 'ko';
 
     // Add user message to UI and history
     const userMessageId = generateMessageId();
     const userTimestamp = new Date().toISOString();
     addMessageToChatAndHistory(userInput, 'user', userMessageId, userTimestamp);
-    toggleWelcomeMessage(true); // Hide welcome message
 
     // Add bot response placeholder
     const botMessageId = generateMessageId();
     const botTimestamp = new Date().toISOString();
-    const botMessagePlaceholder = addMessageToUI('응답 중...', 'bot', botMessageId, botTimestamp, false); // isHistory = false
-    botMessagePlaceholder.classList.add('loading-message'); // Add loading indicator class
+    const botMessagePlaceholder = addMessageToUI('응답 중...', 'bot', botMessageId, botTimestamp, false);
+    botMessagePlaceholder.classList.add('loading-message');
     scrollToBottom();
 
-    // Call API (pass translation and legal terms data)
+    // API 요청
     const botResponse = await sendMessageToBot(userInput, currentMode, getTranslation, getLegalTerms(), currentLanguage);
 
-    // Process bot response
+    // 응답 처리
+    let finalText = '응답 없음';
     if (botResponse.error) {
         botMessagePlaceholder.querySelector('.message-content').textContent = `오류: ${botResponse.error}`;
-        botMessagePlaceholder.classList.add('error-message'); // Add error styling
+        botMessagePlaceholder.classList.add('error-message');
+        finalText = `오류: ${botResponse.error}`;
     } else {
-        // Update placeholder message with actual bot response
-        botMessagePlaceholder.querySelector('.message-content').innerHTML = botResponse.text || '응답 없음';
+        finalText = botResponse.text || '응답 없음';
+        botMessagePlaceholder.querySelector('.message-content').innerHTML = finalText;
     }
-    botMessagePlaceholder.classList.remove('loading-message'); // Remove loading indicator
+    botMessagePlaceholder.classList.remove('loading-message');
     scrollToBottom();
 
-    // Update the bot message in history with the final content
+    // 히스토리에도 저장
     const history = getChatHistory();
-    const botMessageInHistoryIndex = history.findIndex(msg => msg.id === botMessageId);
-    if (botMessageInHistoryIndex > -1) {
-        history[botMessageInHistoryIndex].text = botResponse.text || '응답 없음';
-        // saveChatHistory() is called by addMessageToChatAndHistory
+    const idx = history.findIndex(msg => msg.id === botMessageId);
+    if (idx > -1) {
+        history[idx].text = finalText;
+    }
+
+    // 🟡 기능 1: 자동 탭 제목 설정
+    try {
+        const sessionId = localStorage.getItem('active_tab');
+        if (sessionId) {
+            const cleanedTitle = userInput.length > 20
+                ? userInput.slice(0, 20).trim() + '...'
+                : userInput.trim();
+
+            const tabSelector = `.chat-tab[data-session-id="${sessionId}"]`;
+            const currentTab = document.querySelector(tabSelector);
+
+            if (currentTab && currentTab.dataset.sessionTitle === '새 대화') {
+                currentTab.querySelector('span').textContent = cleanedTitle;
+                currentTab.dataset.sessionTitle = cleanedTitle;
+
+                // 저장
+                const titleMap = JSON.parse(localStorage.getItem('chat_titles') || '{}');
+                titleMap[sessionId] = cleanedTitle;
+                localStorage.setItem('chat_titles', JSON.stringify(titleMap));
+            }
+        }
+    } catch (e) {
+        console.warn('탭 제목 설정 중 오류:', e);
     }
 }
 
@@ -62,17 +100,21 @@ export function handleFeedbackClick(event) {
     const messageId = event.target.dataset.messageId;
 
     if (feedbackType === 'no') {
-        // For 'no' feedback, open the detailed feedback modal
         const feedbackMessageIdInput = document.getElementById('feedbackMessageId');
         if (feedbackMessageIdInput) {
             feedbackMessageIdInput.value = messageId;
         }
         openModal('feedbackModal');
     } else {
-        // For 'yes' feedback, just save and disable buttons
-        addFeedbackData({ messageId: messageId, feedback: feedbackType, timestamp: new Date().toISOString() });
-        alert(getTranslation('alertFeedbackSubmitted')); // Replace with custom modal
-        event.target.closest('.feedback-buttons').querySelectorAll('button').forEach((btn) => (btn.disabled = true));
+        addFeedbackData({
+            messageId: messageId,
+            feedback: feedbackType,
+            timestamp: new Date().toISOString()
+        });
+        alert(getTranslation('alertFeedbackSubmitted'));
+        event.target.closest('.feedback-buttons')
+            .querySelectorAll('button')
+            .forEach(btn => btn.disabled = true);
     }
 }
 
@@ -91,19 +133,38 @@ export function handleFeedbackSubmit(event) {
         feedback: 'no',
         reason: reason,
         comment: comment,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
     });
 
-    console.log('Detailed feedback:', { messageId, reason, comment });
-    alert(getTranslation('alertFeedbackSubmitted')); // Replace with custom modal
+    alert(getTranslation('alertFeedbackSubmitted'));
     document.getElementById('feedbackForm').reset();
-    closeModal('feedbackModal'); // Close feedback modal
+    closeModal('feedbackModal');
 
-    // Disable feedback buttons on the original message
-    const messageFeedbackButtons = document.querySelector(
-        `.message[data-message-id="${messageId}"] .feedback-buttons`
-    );
-    if (messageFeedbackButtons) {
-        messageFeedbackButtons.querySelectorAll('button').forEach((btn) => (btn.disabled = true));
+    const buttons = document.querySelector(`.message[data-message-id="${messageId}"] .feedback-buttons`);
+    if (buttons) {
+        buttons.querySelectorAll('button').forEach(btn => btn.disabled = true);
     }
 }
+
+
+export async function handleFileUpload(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/chatbot/upload-file/', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        const chatInput = document.getElementById('chatInput');
+        chatInput.value = data.text.slice(0, 2000);
+        chatInput.focus();
+    } else {
+        const err = await response.json().catch(() => null);
+        alert(`파일 업로드 실패: ${err?.error || response.statusText}`);
+    }
+}
+
+

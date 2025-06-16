@@ -220,7 +220,6 @@ export async function logoutUser() {
                 error: '로그아웃에 실패했습니다.'
             };
         }
-
     } catch (error) {
         console.error('Logout API Error:', error);
         return {
