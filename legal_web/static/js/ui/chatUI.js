@@ -9,7 +9,7 @@ import {
     getChatHistory,
 } from '../data/chatHistoryManager.js';
 import { handleFileUpload } from '../logic/chatProcessor.js';
-import { switchTab as selectTab, openTabs, createTab } from '../main.js';
+import { switchTab as selectTab, openTabs, createTab, chatSessions } from '../main.js';
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 
 let attachments = [];
@@ -374,6 +374,7 @@ function createContextMenu(id, title) {
     del.className = 'delete-btn';
     del.textContent = '삭제';
     del.addEventListener('click', e => {
+
         e.stopPropagation();
         handleDelete(id);
         closeAllContextMenus();
@@ -407,7 +408,7 @@ function handleRename(id, oldTitle) {
 function handleDelete(id) {
     if (confirm('정말 삭제하시겠습니까?')) {
         // 1) 저장소에서 삭제
-        deleteChatSession(id);
+        deleteChatSession(id, chatSessions, openTabs);
         // 2) 사이드바 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭도 닫아주기

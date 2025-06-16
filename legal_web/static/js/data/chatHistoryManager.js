@@ -1,7 +1,9 @@
 // static/js/data/chatHistoryManager.js
 import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
-import { addMessageToUI, toggleWelcomeMessage } from '../ui/chatUI.js';
+import { addMessageToUI, toggleWelcomeMessage, renderRecentChats } from '../ui/chatUI.js';
+import { saveTabState, renderTabs, switchTab, chatSessions,openTabs, activeTab  } from '../main.js'
+import { setActiveTab } from '../state/chatTabState.js';
 
 let chatHistory = JSON.parse(localStorage.getItem('legalBotChatHistory')) || [];
 let chatTitles = JSON.parse(localStorage.getItem('chat_session_titles')) || {};
@@ -137,12 +139,42 @@ export function getChatSessionList() {
 // ─── 세션 삭제 함수 ───
 // 사이드바 제목 목록에서 해당 세션을 지우고 UI를 갱신합니다
 export function deleteChatSession(sessionId) {
-    // 1) sessionId 키 삭제
+
+
+    const chatMessages = $('#chatMessages');
+    const welcomeMessage = $('#welcomeMessage');
+
+    // 1. 제목 삭제
     delete chatTitles[sessionId];
-    // 2) 로컬스토리지에 반영
     localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
-    // 3) ui용 로드 함수 호출 (기존 loadRecentChats 사용)
-    loadRecentChats();
+
+    // 2. 세션 삭제
+    delete chatSessions[sessionId];
+
+    // 3. 탭 삭제
+    const idx = openTabs.findIndex(tab => tab.id === sessionId);
+    if (idx !== -1) openTabs.splice(idx, 1);
+
+    // 4. 활성 탭 갱신
+    if (activeTab === sessionId) {
+        const fallback = openTabs.length > 0 ? openTabs[0].id : null;
+        setActiveTab(fallback);
+    }
+
+    // 5. 상태 저장
+    saveTabState();
+
+    // 6. UI 갱신
+    renderTabs();
+    renderRecentChats(getChatSessionList());
+
+    const newActiveTab = localStorage.getItem('active_tab');
+    if (newActiveTab) {
+        switchTab(newActiveTab);
+    } else {
+        chatMessages.innerHTML = '';
+        welcomeMessage.classList.remove('hidden');
+    }
 }
 
 export function clearChatSessionTitles() {

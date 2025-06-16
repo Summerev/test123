@@ -28,7 +28,7 @@ import {
     renderRecentChats,         // ← 추가
 
 } from './ui/chatUI.js';
-import { handleFeedbackClick, handleFeedbackSubmit } from './logic/chatProcessor.js';
+import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -58,18 +58,18 @@ const navUserDisplayName = $('#user-display-name');
 // 로그인 유지 체크박스
 const rememberMeCheckbox = $('#rememberMe'); 
 
-let openTabs = JSON.parse(localStorage.getItem('open_tabs')) || [];
-let activeTab = localStorage.getItem('active_tab') || null;
-let chatSessions = JSON.parse(localStorage.getItem('chat_sessions')) || {};
+export let openTabs = JSON.parse(localStorage.getItem('open_tabs')) || [];
+export let activeTab = localStorage.getItem('active_tab') || null;
+export let chatSessions = JSON.parse(localStorage.getItem('chat_sessions')) || {};
 
 // --- Core Functions ---
-function saveTabState() {
+export function saveTabState() {
     localStorage.setItem('open_tabs', JSON.stringify(openTabs));
     localStorage.setItem('active_tab', activeTab);
     localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
 }
 
-function generateSessionId() {
+export function generateSessionId() {
     return 'session_' + Date.now();
 }
 
@@ -77,7 +77,7 @@ function generateSessionId() {
  * 메시지를 UI에 추가하고, 봇 메시지에는 피드백 버튼을 추가합니다.
  * @param {object} msg - 메시지 객체 { sender: 'user'|'bot', text: string, timestamp: string }
  */
-function addMessageToUI(msg) {
+export function addMessageToUI(msg) {
     const div = document.createElement('div');
     div.classList.add('chat-message', msg.sender === 'user' ? 'user-message' : 'bot-message');
 
@@ -106,7 +106,7 @@ function addMessageToUI(msg) {
 }
 
 
-function createTab(sessionId, title, shouldSwitch = true, skipPush = false) {
+export function createTab(sessionId, title, shouldSwitch = true, skipPush = false) {
     // 1) 중복 탭 방지
     if ([...tabBar.children].some(tab => tab.dataset.sessionId === sessionId)) return;
 
@@ -147,7 +147,7 @@ function createTab(sessionId, title, shouldSwitch = true, skipPush = false) {
 
 
 
-function switchTab(sessionId) {
+export function switchTab(sessionId) {
     activeTab = sessionId;
     localStorage.setItem('active_tab', sessionId);
 
@@ -169,7 +169,6 @@ function switchTab(sessionId) {
 
 function closeTab(sessionId) {
     openTabs = openTabs.filter(t => t.id !== sessionId);
-    delete chatSessions[sessionId];
 
     if (activeTab === sessionId) {
         activeTab = openTabs.length > 0 ? openTabs[0].id : null;
@@ -203,21 +202,31 @@ function updateTabTitle(sessionId, newTitle) {
     }
 }
 
-function handleSendMessage() {
-    // 1) 입력값 가져오기
+export function handleSendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    // 2) 활성 세션이 없으면 새 세션 생성 & 사이드바 목록 갱신
+    // ✅ 세션이 없다면 새로 생성
     if (!activeTab || !chatSessions[activeTab]) {
         const sessionId = generateSessionId();
         chatSessions[sessionId] = [];
+        activeTab = sessionId;
+
+        // ✅ 탭 목록에 추가 (중복 방지)
+        if (!openTabs.some(t => t.id === sessionId)) {
+            openTabs.push({ id: sessionId, title: '새 대화' });
+        }
+
+        // ✅ 탭 UI 렌더링 및 선택
+        renderTabs();
+        switchTab(sessionId);
+
+        // ✅ 최근 대화 사이드바 반영
         saveChatHistoryWithTitle(sessionId, '새 대화');
         renderRecentChats(getChatSessionList());
-        activeTab = sessionId;
     }
 
-    // 3) 사용자 메시지 객체 생성 & UI 추가
+    // ✅ 사용자 메시지 저장 및 UI 추가
     const userMsg = {
         sender: 'user',
         text,
@@ -227,23 +236,26 @@ function handleSendMessage() {
     addMessageToUI(userMsg);
     saveTabState();
 
-    // 4) 첫 메시지이면 탭 제목 업데이트
+    // ✅ 첫 메시지일 경우 탭 제목 업데이트
     if (chatSessions[activeTab].length === 1) {
-        // 1) 세션 타이틀 저장소에 반영
-        saveChatHistoryWithTitle(activeTab, text);
-        // 2) 사이드바 목록 다시 그리기
-        renderRecentChats(getChatSessionList());
-        // 3) 탭 UI 타이틀도 업데이트
-        updateTabTitle(activeTab, text);
-    }
+    const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
+    saveChatHistoryWithTitle(activeTab, title);
 
-    // 5) 입력창 초기화
+    // ✅ 탭 객체도 업데이트
+    const tab = openTabs.find(t => t.id === activeTab);
+    if (tab) tab.title = title;
+
+    renderTabs(); // 탭 UI 갱신
+    renderRecentChats(getChatSessionList()); // 사이드바 갱신
+	}
+
+    // ✅ 입력창 초기화
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendButton.disabled = true;
     welcomeMessage.classList.add('hidden');
 
-    // 6) 봇 응답 처리
+    // ✅ 봇 응답 처리
     processUserMessage(text);
 }
 
@@ -261,7 +273,7 @@ async function processUserMessage(text) {
 }
 
 // --- Tab Rendering (변경 없음) ---
-function renderTabs() {
+export function renderTabs() {
     if (!tabBar) return;
     tabBar.innerHTML = '';
 
@@ -294,7 +306,7 @@ function renderTabs() {
     });
 }
 
-function restoreTabs() {
+export function restoreTabs() {
     if (openTabs.length > 0) {
         renderTabs();
         if (activeTab) {
@@ -592,6 +604,7 @@ if (signupForm) {
     const supportDocsBtn = document.querySelector('button[data-translate-key="supportDocs"]');
     const precautionsBtn = document.querySelector('button[data-translate-key="precautions"]');
 
+
     if (usageTipsBtn) on(usageTipsBtn, 'click', () => openModal('usageTipsModal'));
     if (supportDocsBtn) on(supportDocsBtn, 'click', () => openModal('supportDocsModal'));
     if (precautionsBtn) on(precautionsBtn, 'click', () => openModal('precautionsModal'));
@@ -686,10 +699,3 @@ if (signupForm) {
         }
     });
 });
-
-// 다른 모듈(chatUI.js)에서 필요로 하는 것들까지 함께 export
-export {
-    switchTab,
-    createTab,
-    openTabs
-};
