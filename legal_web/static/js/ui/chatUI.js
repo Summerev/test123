@@ -9,8 +9,9 @@ import {
     getChatHistory,
 } from '../data/chatHistoryManager.js';
 import { handleFileUpload } from '../logic/chatProcessor.js';
-import { switchTab as selectTab, openTabs, createTab, chatSessions } from '../main.js';
+import { switchTab as selectTab, createTab, renderTabs, generateSessionId, switchTab } from '../main.js';
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
+import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
 
 let attachments = [];
 const chatInput = $('#chatInput');
@@ -344,8 +345,8 @@ export function renderRecentChats(chatList) {
 
         // 클릭하면 탭 생성/전환
         li.addEventListener('click', () => {
-            if (!openTabs.some(t => t.id === chat.id)) {
-                createTab(chat.id, chat.title);
+            if (!openTabs[chat.id]) {
+              createTab(chat.id, chat.title);
             }
             selectTab(chat.id);
         });
@@ -384,13 +385,21 @@ function createContextMenu(id, title) {
     return menu;
 }
 
-function createNewSession() {
-    loadChatHistoryFromStorage();
-    const newId = crypto.randomUUID();
-    saveChatHistoryWithTitle(newId, '새 대화');
-    renderRecentChats(getChatHistory());
-    document.addEventListener('click', closeAllContextMenus);
-    selectTab(newId);
+export function createNewSession() {
+    const sessionId = generateSessionId();
+    chatSessions[sessionId] = [];
+    setActiveTab(sessionId);
+
+    if (!openTabs[sessionId]) {
+        openTabs[sessionId] = { title: '새 대화' };
+    }
+
+    renderTabs();
+    switchTab(sessionId);
+    saveChatHistoryWithTitle(sessionId, '새 대화');
+    renderRecentChats(getChatSessionList());
+
+    return sessionId;  // 이게 핵심
 }
 
 function handleRename(id, oldTitle) {
@@ -409,10 +418,14 @@ function handleDelete(id) {
     if (confirm('정말 삭제하시겠습니까?')) {
         // 1) 저장소에서 삭제
         deleteChatSession(id, chatSessions, openTabs);
+
         // 2) 사이드바 갱신
         renderRecentChats(getChatSessionList());
+
         // 3) 탭도 닫아주기
-        selectTab(openTabs.length ? openTabs[0].id : null);
+        const remainingTabIds = Object.keys(openTabs);
+        const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
+        selectTab(fallbackId);
     }
 }
 

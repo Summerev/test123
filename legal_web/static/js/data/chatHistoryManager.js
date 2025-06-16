@@ -2,8 +2,8 @@
 import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
 import { addMessageToUI, toggleWelcomeMessage, renderRecentChats } from '../ui/chatUI.js';
-import { saveTabState, renderTabs, switchTab, chatSessions,openTabs, activeTab  } from '../main.js'
-import { setActiveTab } from '../state/chatTabState.js';
+import { renderTabs, switchTab, } from '../main.js'
+import { saveTabState, setActiveTab, openTabs, chatSessions, getActiveTab } from '../state/chatTabState.js';
 
 let chatHistory = JSON.parse(localStorage.getItem('legalBotChatHistory')) || [];
 let chatTitles = JSON.parse(localStorage.getItem('chat_session_titles')) || {};
@@ -30,6 +30,14 @@ export function saveChatHistoryWithTitle(sessionId, titleText) {
     const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
     chatTitles[sessionId] = title;
     localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
+
+    // 🔥 추가: openTabs에도 동기화
+    if (openTabs[sessionId]) {
+        openTabs[sessionId].title = title;
+        localStorage.setItem('open_tabs', JSON.stringify(openTabs));
+    }
+
+	renderTabs();
 }
 
 // 🔹 새로 추가: 현재 탭 sessionId에 해당하는 제목 불러오기
@@ -139,8 +147,6 @@ export function getChatSessionList() {
 // ─── 세션 삭제 함수 ───
 // 사이드바 제목 목록에서 해당 세션을 지우고 UI를 갱신합니다
 export function deleteChatSession(sessionId) {
-
-
     const chatMessages = $('#chatMessages');
     const welcomeMessage = $('#welcomeMessage');
 
@@ -151,13 +157,12 @@ export function deleteChatSession(sessionId) {
     // 2. 세션 삭제
     delete chatSessions[sessionId];
 
-    // 3. 탭 삭제
-    const idx = openTabs.findIndex(tab => tab.id === sessionId);
-    if (idx !== -1) openTabs.splice(idx, 1);
+    // 3. 탭 삭제 (객체 방식)
+    delete openTabs[sessionId];
 
     // 4. 활성 탭 갱신
-    if (activeTab === sessionId) {
-        const fallback = openTabs.length > 0 ? openTabs[0].id : null;
+    if (getActiveTab() === sessionId) {
+        const fallback = Object.keys(openTabs)[0] || null;
         setActiveTab(fallback);
     }
 
@@ -168,7 +173,7 @@ export function deleteChatSession(sessionId) {
     renderTabs();
     renderRecentChats(getChatSessionList());
 
-    const newActiveTab = localStorage.getItem('active_tab');
+    const newActiveTab = getActiveTab();
     if (newActiveTab) {
         switchTab(newActiveTab);
     } else {
@@ -176,6 +181,7 @@ export function deleteChatSession(sessionId) {
         welcomeMessage.classList.remove('hidden');
     }
 }
+
 
 export function clearChatSessionTitles() {
     chatTitles = {}; // 모듈 내 변수 초기화
