@@ -987,6 +987,7 @@ function applyTranslations() {
         ? getTranslation('themeToggleDark')
         : getTranslation('themeToggleLight');
   }
+
 }
 
 function changeLanguage(lang) {
