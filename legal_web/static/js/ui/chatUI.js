@@ -1,4 +1,5 @@
-// static/js/ui/chatUI.js
+// static/js/ui/chatUI.js (수정된 내용)
+
 import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelpers.js';
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
 import {
@@ -57,13 +58,14 @@ export function initExamplePrompts() {
 /**
  * Adds a message to the UI.
  * @param {string} messageText - The content of the message.
- * @param {'user'|'bot'} sender - The sender of the message ('user' or 'bot').
- * @param {string} messageId - Unique ID for the message element.
- * @param {string} timestamp - ISO timestamp string for the message.
+ * @param {'user'|'bot'|'system'} sender - The sender of the message ('user', 'bot', 'system').
+ * @param {string} messageId - Unique ID for the message element. (Optional for system messages)
+ * @param {string} timestamp - ISO timestamp string for the message. (Optional for system messages)
  * @param {boolean} [isHistory=false] - True if the message is being loaded from history.
+ * @param {boolean} [isTemporary=false] - True if the message is a temporary placeholder.
  * @returns {HTMLElement} The created message element.
  */
-export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false) {
+export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false, isTemporary = false) {
     if (!chatMessagesContainer) {
         console.warn('Chat messages container not found.');
         return null;
@@ -71,18 +73,23 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
 
     const messageElement = document.createElement('div');
     messageElement.classList.add('message');
-    messageElement.dataset.messageId = messageId;
+    if (messageId) { // 메시지 ID는 'user' 또는 'bot' 메시지에만 필요할 수 있습니다.
+        messageElement.dataset.messageId = messageId;
+    }
+    if (isTemporary) {
+        messageElement.classList.add('temporary-message'); // 임시 메시지 클래스 추가
+    }
 
     const timestampSpan = document.createElement('span');
     timestampSpan.classList.add('message-timestamp');
-    timestampSpan.textContent = formatTimestamp(timestamp);
+    timestampSpan.textContent = timestamp ? formatTimestamp(timestamp) : ''; // 시스템 메시지일 경우 타임스탬프가 없을 수 있음
 
     if (sender === 'user') {
         messageElement.classList.add('user-message');
         const textNode = document.createTextNode(messageText);
         messageElement.appendChild(textNode);
         messageElement.appendChild(timestampSpan);
-    } else { // sender === 'bot'
+    } else if (sender === 'bot') {
         messageElement.classList.add('bot-message');
 
         const botNameSpan = document.createElement('span');
@@ -196,7 +203,15 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
             <button class="feedback-no" data-feedback="no" data-message-id="${messageId}">${getTranslation('feedbackNo')}</button>
         `;
         messageElement.appendChild(feedbackDiv);
+    } else if (sender === 'system') { // 'system' 메시지 타입 추가
+        messageElement.classList.add('system-message');
+        const textNode = document.createTextNode(messageText);
+        messageElement.appendChild(textNode);
+        if (timestamp) { // 시스템 메시지는 타임스탬프가 필수가 아닐 수 있음
+            messageElement.appendChild(timestampSpan);
+        }
     }
+
 
     chatMessagesContainer.appendChild(messageElement);
 
@@ -206,6 +221,22 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
     }
     return messageElement;
 }
+
+
+/**
+ * 채팅 입력 필드와 전송 버튼을 활성화하거나 비활성화합니다.
+ * @param {boolean} enable - true면 활성화, false면 비활성화.
+ */
+export function activateChatInput(enable) { // <-- 이 함수를 추가하고 export 합니다.
+    if (chatInput && sendButton) {
+        chatInput.disabled = !enable;
+        sendButton.disabled = !enable || chatInput.value.trim() === ''; // 입력값이 있을 때만 활성화
+        if (enable) {
+            chatInput.focus();
+        }
+    }
+}
+
 
 /**
  * Scrolls the chat messages container to the bottom.
@@ -289,7 +320,7 @@ export function renderRecentChats(chatList) {
         // 클릭하면 탭 생성/전환
         li.addEventListener('click', () => {
             if (!openTabs[chat.id]) {
-              createTab(chat.id, chat.title);
+                createTab(chat.id, chat.title);
             }
             selectTab(chat.id);
         });
@@ -342,7 +373,7 @@ export function createNewSession() {
     saveChatHistoryWithTitle(sessionId, '새 대화');
     renderRecentChats(getChatSessionList());
 
-    return sessionId;  // 이게 핵심
+    return sessionId; 	// 이게 핵심
 }
 
 function handleRename(id, oldTitle) {
@@ -353,7 +384,7 @@ function handleRename(id, oldTitle) {
         // 2) 사이드바 목록 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
-        updateTabTitle(id, newTitle);
+        updateTabTitle(id, newTitle); // updateTabTitle 함수가 정의되어 있지 않습니다. 이 함수도 추가해야 할 수 있습니다.
     }
 }
 

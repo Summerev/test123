@@ -29,7 +29,7 @@ import {
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
-import { initFileUploadModal } from './ui/fileUpLoadUI.js';
+import { initFileUpload } from './ui/fileUpLoadUI.js';
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -334,7 +334,7 @@ export function restoreTabs() {
     initExamplePrompts();
     initFileDragAndDrop();
     initChatInputAutoResize();
-    initFileUploadModal();
+    initFileUpload();
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
     loadRecentChats();
