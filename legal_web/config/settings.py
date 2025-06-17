@@ -13,6 +13,13 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 # 시크릿 키 불러오기(없으면 디폴트)
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key-if-not-set")
 
+# OpenAI API 키 불러오기(없으면 None)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
+
+# Qdrant 설정 추가
+QDRANT_URL = os.getenv("QDRANT_URL", None)
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
+
 # 디버그 환경변수
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
@@ -151,3 +158,58 @@ AUTH_USER_MODEL = 'accounts.CustomUser' # '앱이름.모델이름' 형식
 # 세션 관련 설정
 # 브라우저가 닫힐 때 세션 쿠키가 만료되도록 설정
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# 파일 업로드 설정
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+
+# 로깅 설정 (RAG 관련 로그 추가)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+        },
+        'rag_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'rag.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.rag': {
+            'handlers': ['rag_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+# logs 디렉토리 생성
+os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
