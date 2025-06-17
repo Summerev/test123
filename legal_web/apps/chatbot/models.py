@@ -1,40 +1,41 @@
-# teamproject/legal_web/apps/chatbot/models.py
-
-'''
+# apps/chatbot/models.py
 from django.db import models
-from django.conf import settings 
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
-class ChatMessage(models.Model):
-    # 각 메시지를 구분하는 고유 ID (자동 생성)
-    id = models.AutoField(primary_key=True)
-
-    # 여러 메시지를 하나의 대화로 묶어주는 ID (프론트엔드에서 생성한 session_id)
-    session_id = models.CharField(max_length=100, db_index=True)
+class ChatHistory(models.Model):
+    """기존 채팅 기록 모델 (RAG와 별도)"""
     
-    # 이 메시지를 소유한 사용자.
-    # ForeignKey는 다른 테이블(User)과 연결하는 관계를 의미합니다.
-    # on_delete=models.CASCADE: 사용자가 삭제되면, 해당 사용자의 채팅 메시지도 함께 삭제됩니다.
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    
-    # 메시지를 보낸 주체 (사용자인지, 봇인지)
-    SENDER_CHOICES = [
-        ('user', '사용자'),
-        ('bot', '봇'),
-    ]
-    sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
-    
-    # 실제 메시지 내용
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    session_id = models.CharField(max_length=255, null=True, blank=True)
     message = models.TextField()
+    response = models.TextField()
+    mode = models.CharField(max_length=50, default='default')  # contract, policy, default
+    created_at = models.DateTimeField(auto_now_add=True)
     
-    # 메시지가 생성된 시간 (자동으로 현재 시간이 저장됨)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        # Django 관리자 페이지 등에서 객체가 표시될 때 사용될 이름
-        return f"[{self.timestamp.strftime('%y-%m-%d %H:%M')}] {self.user.username} - {self.sender}: {self.message[:20]}..."
-
     class Meta:
-        # DB에서 데이터를 조회할 때 기본 정렬 순서 (오래된 메시지부터)
-        ordering = ['timestamp']
-'''
+        ordering = ['-created_at']
+        verbose_name = '채팅 기록'
+        verbose_name_plural = '채팅 기록들'
+    
+    def __str__(self):
+        return f"{self.user or '익명'} - {self.message[:50]}..."
+
+class UploadedFile(models.Model):
+    """기존 파일 업로드 기록 (RAG와 별도)"""
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=10)
+    file_size = models.IntegerField()
+    text_content = models.TextField()
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+        verbose_name = '업로드 파일'
+        verbose_name_plural = '업로드 파일들'
+    
+    def __str__(self):
+        return f"{self.filename} ({self.user or '익명'})"
