@@ -241,9 +241,6 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
  * @param {boolean} enable - true면 활성화, false면 비활성화.
  */
 export function activateChatInput(enable) {
-    // chatInput과 sendButton 변수가 이 파일 상단에서 올바르게 선언 및 할당되었다고 가정합니다.
-    // 예: const chatInput = $('#chatInput');
-    //     const sendButton = $('#sendButton');
     if (chatInput && sendButton) {
         chatInput.disabled = !enable;
         sendButton.disabled = !enable || chatInput.value.trim() === '';
@@ -379,19 +376,22 @@ function createContextMenu(id, title) {
 
 export function createNewSession() {
     const sessionId = generateSessionId();
-    chatSessions[sessionId] = [];
-    setActiveTab(sessionId);
+    chatSessions[sessionId] = []; // 새 세션의 빈 메시지 배열 초기화 (중요)
 
     if (!openTabs[sessionId]) {
         openTabs[sessionId] = { title: '새 대화' };
     }
 
     renderTabs();
-    switchTab(sessionId);
+    switchTab(sessionId); // <-- switchTab이 모든 UI 상태를 설정할 것임
     saveChatHistoryWithTitle(sessionId, '새 대화');
     renderRecentChats(getChatSessionList());
 
-    return sessionId; 	// 이게 핵심
+    // 새 채팅방 생성 시 입력창 비우기
+    const chatInput = $('#chatInput');
+    if (chatInput) chatInput.value = '';
+
+    return sessionId;
 }
 
 function handleRename(id, oldTitle) {
