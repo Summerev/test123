@@ -55,6 +55,19 @@ export function initExamplePrompts() {
     });
 }
 
+export function initChatUI() {
+    // 이 함수가 DOMContentLoaded 시점에 호출되면
+    // chatInput과 sendButton이 이미 HTML에 존재하고
+    // 상단에서 $() 셀렉터로 변수에 할당된 상태일 것입니다.
+    activateChatInput(false); // 초기에는 채팅 입력 비활성화
+    // 필요한 다른 채팅 UI 관련 초기화 로직도 여기에 추가
+    initChatInputAutoResize(); // 입력창 자동 높이 조절 초기화
+    // initSendMessageEvents(); // 메시지 전송 이벤트는 파일 업로드 후 활성화될 때 붙이는 것이 논리적입니다.
+                               // 이 부분은 나중에 '활성화' 시점에 붙이도록 변경하는 것을 고려해보세요.
+                               // 지금은 activateChatInput(true) 될 때 전송 버튼이 활성화되므로
+                               // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
+}
+
 /**
  * Adds a message to the UI.
  * @param {string} messageText - The content of the message.
@@ -227,13 +240,18 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
  * 채팅 입력 필드와 전송 버튼을 활성화하거나 비활성화합니다.
  * @param {boolean} enable - true면 활성화, false면 비활성화.
  */
-export function activateChatInput(enable) { // <-- 이 함수를 추가하고 export 합니다.
+export function activateChatInput(enable) {
+    // chatInput과 sendButton 변수가 이 파일 상단에서 올바르게 선언 및 할당되었다고 가정합니다.
+    // 예: const chatInput = $('#chatInput');
+    //     const sendButton = $('#sendButton');
     if (chatInput && sendButton) {
         chatInput.disabled = !enable;
-        sendButton.disabled = !enable || chatInput.value.trim() === ''; // 입력값이 있을 때만 활성화
+        sendButton.disabled = !enable || chatInput.value.trim() === '';
         if (enable) {
             chatInput.focus();
         }
+    } else {
+        console.warn('activateChatInput: chatInput or sendButton not found.');
     }
 }
 

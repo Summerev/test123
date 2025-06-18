@@ -26,6 +26,7 @@ import {
     initFileDragAndDrop,
     renderRecentChats,         // ← 추가
     createNewSession,
+	initChatUI,
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
@@ -335,6 +336,7 @@ export function restoreTabs() {
     initFileDragAndDrop();
     initChatInputAutoResize();
     initFileUpload();
+	initChatUI();
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
     loadRecentChats();
