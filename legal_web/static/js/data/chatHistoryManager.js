@@ -1,8 +1,8 @@
 // static/js/data/chatHistoryManager.js
 import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
-import { addMessageToUI, toggleWelcomeMessage, renderRecentChats } from '../ui/chatUI.js';
-import { renderTabs, switchTab, } from '../main.js'
+import { addMessageToUI, toggleWelcomeMessage, renderRecentChats, switchTab } from '../ui/chatUI.js';
+import { renderTabs, } from '../main.js'
 import { saveTabState, setActiveTab, openTabs, chatSessions, getActiveTab } from '../state/chatTabState.js';
 
 let chatHistory = JSON.parse(localStorage.getItem('legalBotChatHistory')) || [];

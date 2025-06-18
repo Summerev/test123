@@ -18,8 +18,11 @@ export function getActiveTab() {
 }
 // 활성 탭 설정
 export function setActiveTab(tabId) {
-  activeTab = tabId;
-  localStorage.setItem('active_tab', tabId);
+    if (activeTab === tabId) {
+        return;
+    }
+    activeTab = tabId;
+    saveTabState(); // 활성 탭이 변경될 때마다 상태 저장
 }
 
 // 탭 열기

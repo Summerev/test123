@@ -115,18 +115,21 @@
     border-color: var(--primary-accent);
     background-color: var(--button-hover-bg);
     color: var(--text-color);
+    transform: scale(1.02);
 }
 
 .drop-area.enabled {
     cursor: pointer;
     background-color: var(--input-bg);
     border-color: var(--primary-accent);
+    opacity: 1;
 }
 
 .drop-area.disabled {
-    background-color: var(--input-disabled-bg, #f0f0f0);
+    background-color: var(--input-disabled-bg, #f5f5f5);
     cursor: not-allowed;
     border-color: var(--border-color);
+    opacity: 0.6;
 }
 
 #browseFileButton {
@@ -149,6 +152,8 @@
     font-size: 0.9em;
     color: var(--icon-color);
     margin-top: 10px;
+    text-align: center;
+    display: block; /* 기본적으로 표시 */
 }
 
 .file-name-display {
@@ -156,4 +161,23 @@
     color: var(--primary-accent);
     margin-top: 15px;
     font-size: 1em;
+    min-height: 1.2em; /* 높이 고정으로 레이아웃 깨짐 방지 */
+    display: none; /* 초기에는 숨김 */
+}
+
+.file-name-display:empty {
+    display: none; /* 내용이 없으면 완전히 숨김 */
+}
+
+.file-name-display:not(:empty) {
+    display: block; /* 내용이 있을 때만 표시 */
+}
+
+.welcome-message.reset {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

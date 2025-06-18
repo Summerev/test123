@@ -26,10 +26,14 @@ import {
     initFileDragAndDrop,
     renderRecentChats,         // ← 추가
     createNewSession,
+	initChatUI,
+	switchTab,
+	addMessageToUI,
+	generateMessageId,
 } from './ui/chatUI.js';
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
-import { initFileUploadModal } from './ui/fileUpLoadUI.js';
+import { initFileUpload } from './ui/fileUpLoadUI.js';
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -64,38 +68,6 @@ const rememberMeCheckbox = $('#rememberMe');
 
 export function generateSessionId() {
     return 'session_' + Date.now();
-}
-
-/**
- * 메시지를 UI에 추가하고, 봇 메시지에는 피드백 버튼을 추가합니다.
- * @param {object} msg - 메시지 객체 { sender: 'user'|'bot', text: string, timestamp: string }
- */
-export function addMessageToUI(msg) {
-    const div = document.createElement('div');
-    div.classList.add('chat-message', msg.sender === 'user' ? 'user-message' : 'bot-message');
-
-    const bubble = document.createElement('div');
-    bubble.classList.add('message-bubble');
-
-    bubble.innerHTML = `
-        <div class="message-text">${msg.text}</div>
-        <div class="message-time">${formatTimestamp(msg.timestamp)}</div>
-    `;
-
-    // 봇 메시지일 경우 피드백 버튼 추가
-    if (msg.sender === 'bot') {
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.classList.add('feedback-buttons');
-        feedbackDiv.innerHTML = `
-            <span class="feedback-yes" title="도움이 되었어요">👍</span>
-            <span class="feedback-no" title="도움이 안 되었어요">👎</span>
-        `;
-        bubble.appendChild(feedbackDiv);
-    }
-
-    div.appendChild(bubble);
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 
@@ -138,27 +110,6 @@ export function createTab(sessionId, title, shouldSwitch = true, skipPush = fals
 }
 
 
-
-export function switchTab(sessionId) {
-    setActiveTab(sessionId);
-    localStorage.setItem('active_tab', sessionId);
-
-    [...tabBar.children].forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.sessionId === sessionId);
-    });
-
-    const messages = chatSessions[sessionId] || [];
-    chatMessages.innerHTML = '';
-    if (messages.length === 0) {
-        welcomeMessage.classList.remove('hidden');
-        chatMessages.appendChild(welcomeMessage);
-        sendButton.disabled = false;
-    } else {
-        welcomeMessage.classList.add('hidden');
-        messages.forEach(msg => addMessageToUI(msg));
-    }
-}
-
 function closeTabUI(sessionId) {
   closeTabState(sessionId);  // 상태만 변경
 
@@ -196,13 +147,14 @@ export function handleSendMessage() {
 
     let currentTabId = getActiveTab();
 
-    // ✅ 세션이 없다면 새로 생성
+    // 세션이 없다면 새로 생성
     if (!currentTabId || !chatSessions[currentTabId]) {
         currentTabId = createNewSession();
     }
 
-    // ✅ 사용자 메시지 저장 및 UI 추가
+    // 사용자 메시지 생성 (고유 ID 포함)
     const userMsg = {
+        id: generateMessageId(), // 고유 메시지 ID 생성
         sender: 'user',
         text,
         timestamp: new Date().toISOString()
@@ -212,50 +164,88 @@ export function handleSendMessage() {
         chatSessions[currentTabId] = [];
     }
 
+    // 세션에 메시지 저장
     chatSessions[currentTabId].push(userMsg);
-    addMessageToUI(userMsg);
+    
+    // UI에 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
+    addMessageToUI(
+        userMsg.text,        // messageText
+        userMsg.sender,      // sender
+        userMsg.id,          // messageId
+        userMsg.timestamp,   // timestamp
+        false,               // isHistory
+        false                // isTemporary
+    );
+    
+    // 상태 저장
     saveTabState();
 
-    // ✅ 첫 메시지일 경우 탭 제목 업데이트
+    // 첫 메시지일 경우 탭 제목 업데이트 (파일 업로드로 이미 설정된 경우 제외)
     if (chatSessions[currentTabId].length === 1) {
-        const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
-        saveChatHistoryWithTitle(currentTabId, title);
+        const currentTitle = openTabs[currentTabId]?.title || '새 대화';
+        
+        // 기본 제목인 경우에만 첫 메시지로 업데이트
+        if (currentTitle === '새 대화') {
+            const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
+            saveChatHistoryWithTitle(currentTabId, title);
 
-        if (openTabs[currentTabId]) {
-            openTabs[currentTabId].title = title;
+            if (openTabs[currentTabId]) {
+                openTabs[currentTabId].title = title;
+            }
+
+            renderTabs();
+            renderRecentChats(getChatSessionList());
         }
-
-        renderTabs();
-        renderRecentChats(getChatSessionList());
     }
 
+    // 입력창 초기화
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendButton.disabled = true;
-    welcomeMessage.classList.add('hidden');
+    
+    // 웰컴 메시지 숨기기
+    if (welcomeMessage) {
+        welcomeMessage.classList.add('hidden');
+    }
 
-    processUserMessage(text);
+    // 봇 응답 처리
+    processUserMessage(text, currentTabId);
 }
 
 
+async function processUserMessage(text, tabId) {
+    // 응답 텍스트 생성 (나중에 실제 AI API로 교체)
+    const responseText = `"${text}"에 대한 기본 설명입니다. 이 내용을 더 자세히 설명해드릴까요?`;
 
-async function processUserMessage(text) {
-    const responseText = `"${text}"에 대한 기본 설명입니다.`;
-
-    const msg = {
+    // 봇 메시지 생성 (고유 ID 포함)
+    const botMsg = {
+        id: generateMessageId(), // 고유 메시지 ID 생성
         sender: 'bot',
         text: responseText,
         timestamp: new Date().toISOString()
     };
 
-    const activeTabId = getActiveTab(); // ✅ 항상 최신 탭 ID 사용
+    const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
+    
     if (!chatSessions[activeTabId]) {
         chatSessions[activeTabId] = [];
     }
 
-    chatSessions[activeTabId].push(msg);
+    // 세션에 봇 메시지 저장
+    chatSessions[activeTabId].push(botMsg);
+    
+    // UI에 봇 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
+    addMessageToUI(
+        botMsg.text,         // messageText
+        botMsg.sender,       // sender
+        botMsg.id,           // messageId
+        botMsg.timestamp,    // timestamp
+        false,               // isHistory
+        false                // isTemporary
+    );
+    
+    // 상태 저장
     saveTabState();
-    addMessageToUI(msg);
 }
 
 // --- Tab Rendering (변경 없음) ---
@@ -334,7 +324,8 @@ export function restoreTabs() {
     initExamplePrompts();
     initFileDragAndDrop();
     initChatInputAutoResize();
-    initFileUploadModal();
+    initFileUpload();
+	initChatUI();
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
     loadRecentChats();
@@ -557,21 +548,23 @@ if (signupForm) {
     // ─── 새 대화 버튼 클릭 시 사이드바에만 추가 ───
 
     const newTabButton = $('#newTabButton');
-if (newTabButton) {
-    on(newTabButton, 'click', () => {
-        createNewSession(); // ✅ 이제 이 한 줄이면 모든 상태 + UI + 탭 생성 완료
-    });
-}
-    // … 나머
+    if (newTabButton) {
+        on(newTabButton, 'click', () => {
+            const sessionId = createNewSession();
+            console.log('새 대화 버튼 클릭 - 세션 생성:', sessionId);
+        });
+    }
 
+	// 초기 로드 시 활성 탭이 없으면 웰컴 메시지 표시
     const activeTabId = getActiveTab();
-
-    if (!activeTabId) {
-    chatMessages.innerHTML = '';
-    welcomeMessage.classList.remove('hidden');
-    chatMessages.appendChild(welcomeMessage);
-    sendButton.disabled = false;
-   }
+    if (!activeTabId || !chatSessions[activeTabId] || chatSessions[activeTabId].length === 0) {
+        if (chatMessages && welcomeMessage) {
+            chatMessages.innerHTML = '';
+            welcomeMessage.classList.remove('hidden');
+            chatMessages.appendChild(welcomeMessage);
+            if (sendButton) sendButton.disabled = false;
+        }
+    }
 
     const usageTipsBtn = document.querySelector('button[data-translate-key="usageTips"]');
     const supportDocsBtn = document.querySelector('button[data-translate-key="supportDocs"]');

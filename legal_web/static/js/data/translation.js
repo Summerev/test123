@@ -1094,15 +1094,7 @@ export function addFeedbackData(newFeedback) {
     localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
 }
 
-/**
- * Generates a unique message ID.
- * @returns {string} A new unique message ID.
- */
-export function generateMessageId() {
-    messageIdCounter++;
-    localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
-    return `msg-${Date.now()}-${messageIdCounter}`;
-}
+
 
 /**
  * Returns the legal terms dictionary.
