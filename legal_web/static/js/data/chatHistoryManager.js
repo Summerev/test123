@@ -1,8 +1,8 @@
 // static/js/data/chatHistoryManager.js
 import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
-import { addMessageToUI, toggleWelcomeMessage, renderRecentChats, switchTab } from '../ui/chatUI.js';
-import { renderTabs, } from '../main.js'
+import { addMessageToUI, toggleWelcomeMessage, renderRecentChats } from '../ui/chatUI.js';
+import { renderTabBar, switchTab } from '../ui/chatTabUI.js';
 import { saveTabState, setActiveTab, openTabs, chatSessions, getActiveTab } from '../state/chatTabState.js';
 
 let chatHistory = JSON.parse(localStorage.getItem('legalBotChatHistory')) || [];
@@ -26,7 +26,7 @@ export function saveChatHistory() {
 }
 
 // 🔹 새로 추가: 현재 탭 sessionId에 해당하는 제목 저장
-export function saveChatHistoryWithTitle(sessionId, titleText) {
+export function saveChatTitle(sessionId, titleText) {
     const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
     chatTitles[sessionId] = title;
     localStorage.setItem('chat_session_titles', JSON.stringify(chatTitles));
@@ -37,7 +37,7 @@ export function saveChatHistoryWithTitle(sessionId, titleText) {
         localStorage.setItem('open_tabs', JSON.stringify(openTabs));
     }
 
-	renderTabs();
+	renderTabBar();
 }
 
 // 🔹 새로 추가: 현재 탭 sessionId에 해당하는 제목 불러오기
@@ -148,7 +148,7 @@ export function getChatSessionList() {
 // 사이드바 제목 목록에서 해당 세션을 지우고 UI를 갱신합니다
 export function deleteChatSession(sessionId) {
     const chatMessages = $('#chatMessages');
-    const welcomeMessage = $('#welcomeMessage');
+    //const welcomeMessage = $('#welcomeMessage');
 
     // 1. 제목 삭제
     delete chatTitles[sessionId];
@@ -170,7 +170,7 @@ export function deleteChatSession(sessionId) {
     saveTabState();
 
     // 6. UI 갱신
-    renderTabs();
+    renderTabBar();
     renderRecentChats(getChatSessionList());
 
     const newActiveTab = getActiveTab();
@@ -178,7 +178,7 @@ export function deleteChatSession(sessionId) {
         switchTab(newActiveTab);
     } else {
         chatMessages.innerHTML = '';
-        welcomeMessage.classList.remove('hidden');
+        //welcomeMessage.classList.remove('hidden');
     }
 }
 

@@ -967,7 +967,7 @@ let enterKeySends =
     : localStorage.getItem('legalBotEnterKeySends') === 'true';
 
 let feedbackData = JSON.parse(localStorage.getItem('legalBotFeedbackData')) || [];
-let messageIdCounter = parseInt(localStorage.getItem('legalBotMessageIdCounter')) || 0;
+
 
 /**
  * Returns the translated text for a given key in the current language.

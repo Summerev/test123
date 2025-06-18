@@ -1,10 +1,10 @@
 // legal_web/static/js/ui/fileUpLoadUI.js (정리된 최종 버전)
 
 import { createNewSession } from '../ui/chatUI.js';
-import { saveChatHistoryWithTitle, getChatSessionList } from '../data/chatHistoryManager.js';
+import { saveChatTitle, getChatSessionList } from '../data/chatHistoryManager.js';
 import { renderRecentChats, addMessageToUI } from './chatUI.js';
 import { getActiveTab, chatSessions, openTabs } from '../state/chatTabState.js';
-import { renderTabs, generateSessionId } from '../main.js';
+import { renderTabBar } from './chatTabUI.js';
 import { saveTabState } from '../state/chatTabState.js';
 
 // DOM 요소 참조
@@ -203,7 +203,7 @@ async function handleFile(file) {
     }
     
     // 성공적으로 완료된 경우에만 채팅방 이름 변경 및 UI 업데이트
-    saveChatHistoryWithTitle(currentTabId, chatRoomName);
+    saveChatTitle(currentTabId, chatRoomName);
     
     // openTabs에도 제목 업데이트
     if (openTabs[currentTabId]) {
@@ -214,7 +214,7 @@ async function handleFile(file) {
     saveTabState();
     
     // UI 업데이트
-    renderTabs();
+    renderTabBar();
     renderRecentChats(getChatSessionList());
     
     // 파일 이름 표시 업데이트
@@ -314,9 +314,6 @@ export function forceResetWelcomeMessage() {
     const fileNameDisplayEl = document.getElementById('fileNameDisplay');
     const dropAreaEl = document.getElementById('dropArea');
     const fileInfoEl = document.querySelector('.file-upload-info');
-    
-    // 선택된 문서 타입 초기화
-    selectedDocType = null;
     
     // 버튼 상태 초기화
     if (docTypeContract) {
