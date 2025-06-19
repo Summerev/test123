@@ -1,7 +1,7 @@
 // legal_web/static/js/ui/fileUpLoadUI.js (정리된 최종 버전)
 
 import { createNewSession } from '../ui/chatUI.js';
-import { saveChatTitle, getChatSessionList, setChatEnabled, addMessageToChatAndHistory  } from '../data/chatHistoryManager.js';
+import { saveChatSessionInfo, getChatSessionList, setChatEnabled, addMessageToChatAndHistory  } from '../data/chatHistoryManager.js';
 import { renderRecentChats, addMessageToUI } from './chatUI.js';
 import { getActiveTab, chatSessions, openTabs } from '../state/chatTabState.js';
 import { renderTabBar } from './chatTabUI.js';
@@ -63,13 +63,21 @@ async function handleFile(file) {
         // createNewSession 호출 시, 새 탭의 canChat 상태는 기본적으로 false
         currentTabId = createNewSession(); 
         // 새롭게 생성된 세션의 제목을 파일명으로 즉시 업데이트
-        // saveChatTitle 함수를 사용하여 제목을 설정하고, 이때 canChat은 false로 유지
-        saveChatTitle(currentTabId, chatRoomName, false); 
+        // saveChatSessionInfo 함수를 사용하여 제목을 설정하고, 이때 canChat은 false로 유지
+        saveChatSessionInfo(currentTabId, {
+          titleText: chatRoomName,
+          canChatStatus: false,
+          docType: selectedDocType
+        });
         
-        // renderTabBar와 renderRecentChats는 saveChatTitle 내부에서 호출되므로 여기서 따로 호출하지 않습니다.
+        // renderTabBar와 renderRecentChats는 saveChatSessionInfo 내부에서 호출되므로 여기서 따로 호출하지 않습니다.
     } else {
         // 기존 탭에 파일 업로드하는 경우에도 제목을 업데이트할 수 있음
-        saveChatTitle(currentTabId, chatRoomName, false); // canChat은 아직 false로 설정
+        saveChatSessionInfo(currentTabId, {
+  titleText: chatRoomName,
+  canChatStatus: false,
+  docType: selectedDocType
+}); // canChat은 아직 false로 설정
     }
     
     // 웰컴 메시지 숨기기
@@ -94,14 +102,7 @@ async function handleFile(file) {
     
     // 채팅 세션에 메시지 추가 (addMessageToChatAndHistory 함수 사용으로 변경)
     // chatSessions[currentTabId].push(uploadingMessage); // 이 줄은 제거
-    addMessageToChatAndHistory(
-        currentTabId, 
-        uploadingMessage.text, 
-        uploadingMessage.sender, 
-        uploadingMessage.id, 
-        uploadingMessage.timestamp, 
-        false // isHistory
-    );
+    addMessageToChatAndHistory(currentTabId, uploadingMessage, false);
 
     // addMessageToUI는 addMessageToChatAndHistory 내부에서 호출되므로, 여기서는 직접 호출하지 않습니다.
     // 하지만 메시지 엘리먼트를 참조하기 위해 addMessageToUI의 반환값을 사용해야 하므로,

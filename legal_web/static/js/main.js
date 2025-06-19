@@ -7,15 +7,14 @@ import {
     getEnterKeySends, setEnterKeySends, getCurrentLanguage,
 } from './data/translation.js';
 import {
-    loadRecentChats,
     loadChatHistoryFromStorage,
     clearAllChats,
     getChatHistory,
     formatTimestamp,
-    saveChatTitle,   // ← 추가
+    saveChatSessionInfo,   // ← 추가
     getChatSessionList,
 } from './data/chatHistoryManager.js';
-import { clearChatSessionTitles, getChatTitle  } from './data/chatHistoryManager.js';
+import { clearChatSessionTitles, addMessageToChatAndHistory, getChatTitle  } from './data/chatHistoryManager.js';
 import { initThemeToggle } from './ui/themeToggle.js';
 import { initDropdowns } from './ui/dropdowns.js';
 import { initCollapsibles } from './ui/sidebarCollapsible.js';
@@ -76,76 +75,49 @@ export function generateSessionId() {
 
 
 
-
 export function handleSendMessage() {
-    const text = chatInput.value.trim();
-    if (!text) return;
+  const text = chatInput.value.trim();
+  if (!text) return;
 
-    let currentTabId = getActiveTab();
+  let sessionId = getActiveTab();
 
-    // 세션이 없다면 새로 생성
-    if (!currentTabId || !chatSessions[currentTabId]) {
-        currentTabId = createNewSession();
+  // 세션이 없으면 새로 생성
+  if (!sessionId || !chatSessions[sessionId]) {
+    sessionId = createNewSession();
+  }
+
+  const messageObj = {
+    id: generateMessageId(),
+    sender: 'user',
+    text,
+    timestamp: new Date().toISOString()
+  };
+
+  // 메시지 추가 및 저장
+  addMessageToChatAndHistory(sessionId, messageObj);
+
+  // 탭 제목이 '새 대화'일 경우 첫 메시지로 변경
+  if (chatSessions[sessionId].length === 1) {
+    const currentTitle = openTabs[sessionId]?.title || '새 대화';
+    if (currentTitle === '새 대화') {
+      const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
+      saveChatSessionInfo(sessionId, title);
+      openTabs[sessionId].title = title;
+      renderTabBar();
+      renderRecentChats(getChatSessionList());
     }
+  }
 
-    // 사용자 메시지 생성 (고유 ID 포함)
-    const userMsg = {
-        id: generateMessageId(), // 고유 메시지 ID 생성
-        sender: 'user',
-        text,
-        timestamp: new Date().toISOString()
-    };
+  // 입력창 초기화
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  sendButton.disabled = true;
 
-    if (!chatSessions[currentTabId]) {
-        chatSessions[currentTabId] = [];
-    }
+  // 웰컴 메시지 숨기기
+  if (welcomeMessage) welcomeMessage.classList.add('hidden');
 
-    // 세션에 메시지 저장
-    chatSessions[currentTabId].push(userMsg);
-    
-    // UI에 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
-    addMessageToUI(
-        userMsg.text,        // messageText
-        userMsg.sender,      // sender
-        userMsg.id,          // messageId
-        userMsg.timestamp,   // timestamp
-        false,               // isHistory
-        false                // isTemporary
-    );
-    
-    // 상태 저장
-    saveTabState();
-
-    // 첫 메시지일 경우 탭 제목 업데이트 (파일 업로드로 이미 설정된 경우 제외)
-    if (chatSessions[currentTabId].length === 1) {
-        const currentTitle = openTabs[currentTabId]?.title || '새 대화';
-        
-        // 기본 제목인 경우에만 첫 메시지로 업데이트
-        if (currentTitle === '새 대화') {
-            const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
-            saveChatTitle(currentTabId, title);
-
-            if (openTabs[currentTabId]) {
-                openTabs[currentTabId].title = title;
-            }
-
-            renderTabBar();
-            renderRecentChats(getChatSessionList());
-        }
-    }
-
-    // 입력창 초기화
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
-    sendButton.disabled = true;
-    
-    // 웰컴 메시지 숨기기
-    if (welcomeMessage) {
-        welcomeMessage.classList.add('hidden');
-    }
-
-    // 봇 응답 처리
-    processUserMessage(text, currentTabId);
+  // 챗봇 응답
+  processUserMessage(text, sessionId);
 }
 
 
@@ -219,7 +191,6 @@ async function processUserMessage(text, tabId) {
 	initChatUI();
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
-    loadRecentChats();
 
 	restoreTabs();
 

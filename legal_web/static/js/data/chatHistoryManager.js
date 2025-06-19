@@ -52,30 +52,27 @@ export function saveChatHistory() {
     // legalBotChatHistory는 이제 사용하지 않으므로, 이 줄은 제거하거나 주석 처리할 수 있습니다.
     // localStorage.setItem('legalBotChatHistory', JSON.stringify(chatHistory)); 
     saveTabState(); // chatSessions, openTabs, activeTab 모두 저장
-    loadRecentChats(); // 최근 채팅 목록 업데이트
 }
 
-// 🔹 수정: saveChatTitle 함수 - chat_session_info에 title과 canChat 함께 저장
-export function saveChatTitle(sessionId, titleText, canChatStatus = false) { // canChatStatus 파라미터 추가
+// 🔹 수정: saveChatSessionInfo 함수 - chat_session_info에 title과 canChat 함께 저장
+export function saveChatSessionInfo(sessionId, {titleText = '새 대화', canChatStatus = false, docType = null }) {
     const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
-    
-    // 기존 chat_session_info[sessionId] 객체가 있다면 canChat 값을 유지하고, 없으면 새로 생성
+
     if (!chat_session_info[sessionId]) {
-        // 새 세션 생성 시 기본값으로 canChatStatus를 사용 (보통은 false)
-        chat_session_info[sessionId] = { title: title, canChat: canChatStatus }; 
+        chat_session_info[sessionId] = { title, canChat: canChatStatus };
     } else {
-        // 기존 세션은 제목만 업데이트 (canChat은 setChatEnabled로 별도 관리)
         chat_session_info[sessionId].title = title;
     }
-    
+
+    if (docType) {
+        chat_session_info[sessionId].docType = docType;
+    }
+
     localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
 
-    // 🔥 openTabs에도 동기화 (탭 바 렌더링을 위해)
-    // openTabs는 이제 탭의 존재 유무와 제목만 관리하고, canChat은 chat_session_info가 원본이 되도록 합니다.
     if (openTabs[sessionId]) {
         openTabs[sessionId].title = title;
-        // openTabs의 canChat은 이제 chat_session_info에서 가져와야 하므로, 여기서는 title만 동기화
-        saveTabState(); // openTabs도 저장 (saveTabState는 open_tabs도 저장)
+        saveTabState();
     }
 
     renderTabBar();
@@ -111,27 +108,32 @@ export function getChatEnabled(sessionId) {
 
 // 🔹 수정: addMessageToChatAndHistory 함수 (sessionId를 인자로 받음)
 // 이 함수가 메시지 추가의 유일한 진입점이 되어야 합니다.
-export function addMessageToChatAndHistory(sessionId, messageText, sender, messageId, timestamp, isHistory = false) {
-    if (!chatSessions[sessionId]) {
-        chatSessions[sessionId] = [];
-    }
+export function addMessageToChatAndHistory(sessionId, messageObj, isHistory = false) {
+  if (!chatSessions[sessionId]) {
+    chatSessions[sessionId] = [];
+  }
 
-    const message = {
-        id: messageId,
-        text: messageText,
-        sender: sender,
-        timestamp: timestamp,
-    };
+  const lastMessage = chatSessions[sessionId].slice(-1)[0];
+  const isDuplicate =
+    lastMessage &&
+    lastMessage.id === messageObj.id &&
+    lastMessage.text === messageObj.text;
 
-    // 중복 메시지 방지 (필요하다면)
-    const lastMessageInSession = chatSessions[sessionId].length > 0 ? chatSessions[sessionId][chatSessions[sessionId].length - 1] : null;
-    if (!lastMessageInSession || lastMessageInSession.id !== message.id || lastMessageInSession.text !== message.text) {
-        chatSessions[sessionId].push(message);
-        saveChatHistory(); // 변경된 chatSessions를 저장하고 최근 채팅 갱신
-    }
+  if (!isDuplicate) {
+    chatSessions[sessionId].push(messageObj);
+    saveChatHistory();
+  }
 
-    addMessageToUI(messageText, sender, messageId, timestamp, isHistory);
+  addMessageToUI(
+    messageObj.text,
+    messageObj.sender,
+    messageObj.id,
+    messageObj.timestamp,
+    isHistory,
+    false // isTemporary
+  );
 }
+
 
 // 🔹 수정: loadChatHistoryFromStorage 함수 (현재 활성 탭의 메시지를 로드)
 export function loadChatHistoryFromStorage() {
@@ -146,76 +148,6 @@ export function loadChatHistoryFromStorage() {
         chatSessions[currentTabId].forEach(msg => {
             addMessageToUI(msg.text, msg.sender, msg.id, msg.timestamp, true); // isHistory = true
         });
-    }
-}
-
-// 🔹 수정: loadRecentChats 함수 - chatHistory 대신 chat_session_info와 chatSessions 활용
-export function loadRecentChats() {
-    if (!recentChatsList) {
-        console.warn('Recent chats list element not found: #recentChatsList');
-        return;
-    }
-
-    recentChatsList.innerHTML = '';
-
-    const recentSessionsToDisplay = [];
-    // 모든 chat_session_info를 순회하며 제목과 대표 메시지를 찾습니다.
-    for (const sessionId in chat_session_info) {
-        if (chat_session_info.hasOwnProperty(sessionId)) {
-            const sessionData = chat_session_info[sessionId];
-            const messages = chatSessions[sessionId] || []; // 해당 세션의 메시지 가져오기
-            
-            let representativeText = sessionData.title; // 기본적으로 저장된 제목 사용
-            let fullTextForTitle = sessionData.title; // 툴팁용 전체 텍스트
-
-            // 만약 세션에 메시지가 있고, 첫 사용자 메시지를 대표로 쓰고 싶다면
-            const firstUserMessage = messages.find(msg => msg.sender === 'user');
-            if (firstUserMessage) {
-                const firstLine = firstUserMessage.text.split('\n')[0];
-                representativeText = firstLine.length > 30 ? firstLine.substring(0, 27) + '...' : firstLine;
-                fullTextForTitle = firstUserMessage.text;
-            }
-
-            recentSessionsToDisplay.push({
-                id: sessionId,
-                text: representativeText,
-                fullText: fullTextForTitle,
-                timestamp: messages.length > 0 ? messages[0].timestamp : new Date().toISOString() // 첫 메시지 타임스탬프 또는 현재 시간
-            });
-        }
-    }
-
-    // 최신순으로 정렬 (가장 최근에 업데이트된 세션이 위로 오도록)
-    recentSessionsToDisplay.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    // 최대 10개만 표시
-    const displayCount = Math.min(recentSessionsToDisplay.length, 10);
-    const uniqueDisplayItems = new Set(); // 중복 방지를 위한 Set (제목으로 판단)
-    const finalRecentChats = [];
-
-    for(let i=0; i<recentSessionsToDisplay.length && finalRecentChats.length < 10; i++) {
-        const item = recentSessionsToDisplay[i];
-        if (!uniqueDisplayItems.has(item.text)) {
-            finalRecentChats.push(item);
-            uniqueDisplayItems.add(item.text);
-        }
-    }
-
-    if (finalRecentChats.length > 0) {
-        finalRecentChats.forEach((item) => {
-            const chatItem = document.createElement('div');
-            chatItem.classList.add('chat-item');
-            chatItem.textContent = `${getTranslation('chatItemPrefix')}${item.text}`;
-            chatItem.title = item.fullText;
-            chatItem.dataset.sessionId = item.id; // data-chatId 대신 data-sessionId 사용
-            recentChatsList.appendChild(chatItem);
-        });
-    } else {
-        const noChatsItem = document.createElement('div');
-        noChatsItem.classList.add('chat-item', 'no-chats-item');
-        noChatsItem.setAttribute('data-translate-key', 'noRecentChats');
-        noChatsItem.textContent = getTranslation('noRecentChats');
-        recentChatsList.appendChild(noChatsItem);
     }
 }
 
@@ -267,15 +199,23 @@ export function getChatSessionList() {
 export function deleteChatSession(sessionId) {
     const chatMessages = $('#chatMessages');
 
-    // 1. 제목 및 canChat 상태 삭제 (chat_session_info에서)
+    // 1. 제목 및 canChat 상태 삭제 (세션 정보에서 제거)
     delete chat_session_info[sessionId];
     localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
 
-    // 2. 탭 및 세션 채팅 내역 삭제 (chatTabState의 closeTabState 함수 호출)
-    // closeTabState 함수가 chatSessions[sessionId]와 openTabs[sessionId]를 모두 삭제하도록 되어있음
-    closeTabState(sessionId); // chatTabState.js의 closeTabState 호출
+    // 2. 채팅 세션 데이터 삭제 (메모리)
+    delete chatSessions[sessionId];          // 🔥 직접 세션 삭제
+    delete openTabs[sessionId];              // 탭 목록에서도 삭제
 
-    // 3. UI 갱신
+    // 3. 활성 탭이 삭제 대상이면 null 처리
+    if (getActiveTab() === sessionId) {
+        setActiveTab(null);
+    }
+
+    // 4. 전체 상태 저장
+    saveTabState();
+
+    // 5. UI 갱신
     renderTabBar();
     renderRecentChats(getChatSessionList());
 
@@ -284,7 +224,7 @@ export function deleteChatSession(sessionId) {
         switchTab(newActiveTab);
     } else {
         chatMessages.innerHTML = '';
-        switchTab(null); // 모든 탭이 사라졌을 때 초기 상태로 전환
+        switchTab(null); // 초기 상태
     }
 }
 

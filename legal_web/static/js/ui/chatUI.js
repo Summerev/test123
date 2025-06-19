@@ -4,7 +4,7 @@ import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelp
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
 import {
     formatTimestamp,
-    saveChatTitle,
+    saveChatSessionInfo,
     clearAllChats,
     loadChatHistoryFromStorage,
     getChatHistory,
@@ -433,7 +433,7 @@ export function createNewSession() {
 
     renderTabBar();
     switchTab(sessionId);
-    saveChatTitle(sessionId, '새 대화');
+    saveChatSessionInfo(sessionId, '새 대화');
     renderRecentChats(getChatSessionList());
 
     // 새 채팅방 생성 시 입력창 완전 초기화 및 비활성화
@@ -473,7 +473,7 @@ function handleRename(id, oldTitle) {
     const newTitle = prompt('새 이름 입력', oldTitle);
     if (newTitle) {
         // 1) 타이틀 저장소에 반영
-        saveChatTitle(id, newTitle);
+        saveChatSessionInfo(id, newTitle);
         // 2) 사이드바 목록 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
@@ -485,15 +485,15 @@ function handleRename(id, oldTitle) {
 function handleDelete(id) {
     if (confirm('정말 삭제하시겠습니까?')) {
         // 1) 저장소에서 삭제
-        deleteChatSession(id, chatSessions, openTabs);
+        deleteChatSession(id);
 
-        // 2) 사이드바 갱신
-        renderRecentChats(getChatSessionList());
+        // 2) 사이드바 갱신 (deleteChatSession 내부에서 이미 수행됨)
+        // renderRecentChats(getChatSessionList());
 
-        // 3) 탭도 닫아주기
-        const remainingTabIds = Object.keys(openTabs);
-        const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
-        switchTab(fallbackId);
+        // 3) 탭도 닫아주기 (deleteChatSession 내부에서 이미 처리됨)
+        // const remainingTabIds = Object.keys(openTabs);
+        // const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
+        // switchTab(fallbackId);
     }
 }
 
