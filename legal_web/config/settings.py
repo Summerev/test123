@@ -16,6 +16,9 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 # DEBUG가 False일 때, Django 애플리케이션이 응답할 수 있는 호스트를 정의. 개발 환경에서는 'localhost'와 '127.0.0.1'을 포함.
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
