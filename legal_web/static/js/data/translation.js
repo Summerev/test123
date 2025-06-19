@@ -1020,8 +1020,7 @@ export function changeLanguage(lang) {
     localStorage.setItem('legalBotLanguage', lang);
     document.documentElement.lang = lang;
     applyTranslations();
-    // Note: loadChatHistoryFromStorage and loadRecentChats are called from main.js
-    // after language change event is dispatched.
+
 	const selectedLanguageText = getTranslation(`${lang === 'ko' ? 'koreanTerm' :
                                                   lang === 'en' ? 'englishTerm' :
                                                   lang === 'ja' ? 'japaneseTerm' :
