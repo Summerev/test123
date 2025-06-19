@@ -9,7 +9,6 @@ import { saveTabState } from '../state/chatTabState.js';
 
 // DOM 요소 참조
 let welcomeMessageDiv;
-let chatInputContainer;
 let fileUploadInput;
 let fileNameDisplay;
 let selectedDocType = null;
@@ -39,6 +38,7 @@ function setDropAreaEnabled(isEnabled) {
  * @param {File} file - 업로드할 파일 객체
  */
 async function handleFile(file) {
+
     if (!file || !selectedDocType) {
         if (!selectedDocType) {
             alert('파일을 업로드하기 전에 문서 유형을 먼저 선택해주세요.');
@@ -432,6 +432,7 @@ export function initFileUpload() {
     });
 
     dropArea.addEventListener('drop', function(e) {
+		debugger;
         e.preventDefault();
         e.stopPropagation();
         dropArea.classList.remove('active');
@@ -443,23 +444,6 @@ export function initFileUpload() {
             }
         } else {
             alert('파일을 업로드하기 전에 문서 유형을 먼저 선택해주세요.');
-        }
-    });
-}
-
-// 전역 파일 드롭 지원 (선택사항 - 기존 chatUI.js와 중복될 수 있음)
-export function initGlobalFileDrop() {
-    document.addEventListener('dragover', (e) => {
-        e.preventDefault();
-    });
-    
-    document.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const file = e.dataTransfer.files[0];
-        if (file && !selectedDocType) {
-            alert('파일을 업로드하기 전에 문서 유형을 먼저 선택해주세요.');
-        } else if (file && selectedDocType) {
-            handleFile(file);
         }
     });
 }

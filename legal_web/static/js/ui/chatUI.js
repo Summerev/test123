@@ -9,7 +9,7 @@ import {
     loadChatHistoryFromStorage,
     getChatHistory,
 } from '../data/chatHistoryManager.js';
-import { handleFileUpload } from '../logic/chatProcessor.js';
+
 import { generateSessionId } from '../main.js';
 import { createTab, renderTabBar, switchTab } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
@@ -323,24 +323,7 @@ export function toggleWelcomeMessage(hide) {
     }
 }
 
-export function initGlobalFileDropOverlay() {
-    const overlay = document.getElementById('fileDropOverlay');
-    if (!overlay) return;
 
-    let dragTimeout;
-    document.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        overlay.classList.add('visible');
-        clearTimeout(dragTimeout);
-        dragTimeout = setTimeout(() => overlay.classList.remove('visible'), 200);
-    });
-    document.addEventListener('drop', (e) => {
-        e.preventDefault();
-        overlay.classList.remove('visible');
-        const file = e.dataTransfer.files[0];
-        if (file) handleFileUpload(file);
-    });
-}
 
 /**
  * 최근 대화 목록 렌더링
@@ -501,26 +484,3 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRecentChats(getChatHistory());
     document.addEventListener('click', closeAllContextMenus);
 });
-
-/** 파일 드래그앤드롭 초기화 */
-export function initFileDragAndDrop() {
-    const dropArea = document.getElementById('chatMessages');
-    if (!dropArea) return;
-
-    dropArea.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropArea.classList.add('drag-over');
-    });
-    dropArea.addEventListener('dragleave', e => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-over');
-    });
-    dropArea.addEventListener('drop', e => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleFileUpload(file);
-        }
-    });
-}

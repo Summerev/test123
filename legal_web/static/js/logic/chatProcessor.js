@@ -65,24 +65,3 @@ export function handleFeedbackSubmit(event) {
 }
 
 
-export async function handleFileUpload(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch('/chatbot/upload-file/', {
-        method: 'POST',
-        body: formData
-    });
-
-    if (response.ok) {
-        const data = await response.json();
-        const chatInput = document.getElementById('chatInput');
-        chatInput.value = data.text.slice(0, 2000);
-        chatInput.focus();
-    } else {
-        const err = await response.json().catch(() => null);
-        alert(`파일 업로드 실패: ${err?.error || response.statusText}`);
-    }
-}
-
-
