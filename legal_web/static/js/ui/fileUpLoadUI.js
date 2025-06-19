@@ -18,6 +18,25 @@ let browseFileButton;
 let dropArea;
 let fileInfoMessage;
 
+// CSRF 토큰을 가져오는 헬퍼 함수 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+
+
 /**
  * 드래그 앤 드롭 영역의 활성화/비활성화 상태를 설정합니다.
  * @param {boolean} isEnabled 

@@ -13,6 +13,10 @@ import docx                   # python-docx (DOCX)
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
+import textwrap
+import numpy as np
+import faiss
+
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 def chat_main(request):
