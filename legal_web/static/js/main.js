@@ -22,7 +22,7 @@ import { initModals, openModal, closeModal } from './ui/modalManager.js';
 import {
     initChatInputAutoResize,
     initExamplePrompts,
-    initFileDragAndDrop,
+
     renderRecentChats,         // ← 추가
     createNewSession,
 	initChatUI,
@@ -30,7 +30,6 @@ import {
 	generateMessageId,
 } from './ui/chatUI.js';
 import { createTab, renderTabBar, restoreTabs, } from './ui/chatTabUI.js'
-
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
 import { initFileUpload } from './ui/fileUpLoadUI.js';
@@ -69,11 +68,6 @@ const rememberMeCheckbox = $('#rememberMe');
 export function generateSessionId() {
     return 'session_' + Date.now();
 }
-
-
-
-
-
 
 export function handleSendMessage() {
   const text = chatInput.value.trim();
@@ -185,7 +179,7 @@ async function processUserMessage(text, tabId) {
     initModals();
     initChatInputAutoResize();
     initExamplePrompts();
-    initFileDragAndDrop();
+
     initChatInputAutoResize();
     initFileUpload();
 	initChatUI();
