@@ -20,6 +20,7 @@ let fileInfoMessage;
 
 /**
  * 드래그 앤 드롭 영역의 활성화/비활성화 상태를 설정합니다.
+ * @param {boolean} isEnabled 
  */
 function setDropAreaEnabled(isEnabled) {
     if (isEnabled) {
@@ -448,6 +449,17 @@ export function initFileUpload() {
     });
 }
 
+/**
+ * 서버에 파일을 업로드하고 결과를 반환
+ * 지금은 /chatbot/upload-file/에 연결됨 
+ * 
+ * @param {File} file - 업로드할 파일 객체 (예: 사용자가 선택한 .pdf, .docx 등)
+ * @returns {Promise<Object>} 서버 응답 결과 객체
+ * @returns {boolean} return.success - 업로드 성공 여부
+ * @returns {string} [return.text] - 서버에서 반환한 텍스트 (예: 추출된 문서 내용)
+ * @returns {string} [return.message] - 업로드 성공 메시지
+ * @returns {string} [return.error] - 실패 시 에러 메시지
+ */
 async function uploadFileToServer(file) {
     try {
         console.log('서버로 파일 업로드 시작:', file.name);
