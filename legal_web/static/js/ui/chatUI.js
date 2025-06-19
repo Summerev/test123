@@ -4,13 +4,14 @@ import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelp
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
 import {
     formatTimestamp,
-    saveChatHistoryWithTitle,
+    saveChatTitle,
     clearAllChats,
     loadChatHistoryFromStorage,
     getChatHistory,
 } from '../data/chatHistoryManager.js';
 import { handleFileUpload } from '../logic/chatProcessor.js';
-import { createTab, renderTabs, generateSessionId } from '../main.js';
+import { generateSessionId } from '../main.js';
+import { createTab, renderTabBar, switchTab } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
 import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
@@ -35,7 +36,6 @@ export function initChatInputAutoResize() {
         sendButton.disabled = this.value.trim() === ''; // Disable if empty
     });
 
-    // Trigger input event once on load to set initial height and button state
     chatInput.dispatchEvent(new Event('input'));
 }
 
@@ -70,26 +70,12 @@ export function initChatUI() {
                                // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
 }
 
-/**
- * Generates a unique message ID.
- * @returns {string} A new unique message ID.
- */
 export function generateMessageId() {
 	messageIdCounter++;
 	localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
 	return `msg-${Date.now()}-${messageIdCounter}`;
 }
 
-/**
- * Adds a message to the UI.
- * @param {string} messageText - The content of the message.
- * @param {'user'|'bot'|'system'} sender - The sender of the message ('user', 'bot', 'system').
- * @param {string} messageId - Unique ID for the message element. (Optional for system messages)
- * @param {string} timestamp - ISO timestamp string for the message. (Optional for system messages)
- * @param {boolean} [isHistory=false] - True if the message is being loaded from history.
- * @param {boolean} [isTemporary=false] - True if the message is a temporary placeholder.
- * @returns {HTMLElement} The created message element.
- */
 export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false, isTemporary = false) {
     if (!chatMessagesContainer) {
         console.warn('Chat messages container not found.');
@@ -436,6 +422,7 @@ function createContextMenu(id, title) {
     return menu;
 }
 
+// 세션 추가
 export function createNewSession() {
     const sessionId = generateSessionId();
     chatSessions[sessionId] = []; // 새 세션의 빈 메시지 배열 초기화
@@ -444,24 +431,24 @@ export function createNewSession() {
         openTabs[sessionId] = { title: '새 대화' };
     }
 
-    renderTabs();
+    renderTabBar();
     switchTab(sessionId);
-    saveChatHistoryWithTitle(sessionId, '새 대화');
+    saveChatTitle(sessionId, '새 대화');
     renderRecentChats(getChatSessionList());
 
-    // 새 채팅방 생성 시 입력창 완전 초기화
+    // 새 채팅방 생성 시 입력창 완전 초기화 및 비활성화
     const chatInput = $('#chatInput');
     if (chatInput) {
         chatInput.value = '';
-        chatInput.placeholder = '법률 문서나 조항을 입력하거나, 질문을 입력하세요...';
-        chatInput.disabled = false;
+        chatInput.placeholder = '파일을 업로드하기 전에 질문을 입력할 수 없습니다.'; // 메시지 변경
+        chatInput.disabled = true; // <--- 이 부분을 true로 설정하여 비활성화
         chatInput.style.height = 'auto'; // 높이도 초기화
     }
 
-    // 전송 버튼 초기화
+    // 전송 버튼 초기화 (비활성화)
     const sendButton = $('#sendButton');
     if (sendButton) {
-        sendButton.disabled = true; // 처음에는 비활성화
+        sendButton.disabled = true; // 처음에는 비활성화 (현재 코드와 동일)
     }
 
     // 웰컴 메시지 강제 초기화
@@ -482,93 +469,11 @@ export function createNewSession() {
     return sessionId;
 }
 
-export function switchTab(sessionId) {
-    if (!sessionId) {
-        console.warn('switchTab: sessionId가 null 또는 undefined입니다.');
-        return;
-    }
-    
-    console.log('탭 전환 시작:', sessionId);
-    
-    setActiveTab(sessionId);
-    localStorage.setItem('active_tab', sessionId);
-
-    // 탭 UI 업데이트
-    [...tabBar.children].forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.sessionId === sessionId);
-    });
-
-    const messages = chatSessions[sessionId] || [];
-    console.log('탭 전환 - 메시지 수:', messages.length);
-    
-    // 채팅 메시지 컨테이너 초기화
-    if (chatMessages) {
-        chatMessages.innerHTML = '';
-    }
-    
-    if (messages.length === 0) {
-        // 메시지가 없는 경우 웰컴 메시지 표시
-        console.log('빈 채팅방 - 웰컴 메시지 표시');
-        
-        if (welcomeMessage && chatMessages) {
-            welcomeMessage.classList.remove('hidden');
-            chatMessages.appendChild(welcomeMessage);
-        }
-        
-        if (sendButton) {
-            sendButton.disabled = true;
-        }
-        
-        // 파일 업로드 관련 모든 상태 강제 리셋 (약간의 지연)
-        setTimeout(() => {
-            if (forceResetWelcomeMessage) {
-                forceResetWelcomeMessage();
-            }
-        }, 50);
-        
-        // 채팅 입력창 초기화
-        const chatInput = $('#chatInput');
-        if (chatInput) {
-            chatInput.value = '';
-            chatInput.placeholder = '법률 문서나 조항을 입력하거나, 질문을 입력하세요...';
-            chatInput.disabled = false;
-            chatInput.style.height = 'auto';
-        }
-        
-    } else {
-        // 메시지가 있는 경우 채팅 내역 표시
-        console.log('기존 채팅방 - 메시지 복원');
-        
-        if (welcomeMessage) {
-            welcomeMessage.classList.add('hidden');
-        }
-        
-        // 메시지 순차적으로 복원
-        messages.forEach((msg, index) => {
-            console.log(`메시지 복원 ${index + 1}/${messages.length}:`, msg.id || 'no-id', msg.text.substring(0, 30) + '...');
-            addMessageToUI(msg.text, msg.sender, msg.id, msg.timestamp, true); // isHistory = true
-        });
-        
-        // 채팅이 있는 경우 입력창 활성화
-        const chatInput = $('#chatInput');
-        if (chatInput) {
-            chatInput.disabled = false;
-            chatInput.placeholder = '메시지를 입력하세요...';
-        }
-        
-        if (sendButton) {
-            sendButton.disabled = chatInput && chatInput.value.trim() === '';
-        }
-    }
-    
-    console.log('탭 전환 완료:', sessionId);
-}
-
 function handleRename(id, oldTitle) {
     const newTitle = prompt('새 이름 입력', oldTitle);
     if (newTitle) {
         // 1) 타이틀 저장소에 반영
-        saveChatHistoryWithTitle(id, newTitle);
+        saveChatTitle(id, newTitle);
         // 2) 사이드바 목록 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
@@ -590,15 +495,6 @@ function handleDelete(id) {
         const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
         switchTab(fallbackId);
     }
-}
-
-function switchToChat(id) {
-    switchTab(id);
-}
-
-function renameChat(id, newTitle) {
-    saveChatHistoryWithTitle(id, newTitle);
-    renderRecentChats(getChatHistory());
 }
 
 document.addEventListener('DOMContentLoaded', () => {
