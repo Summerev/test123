@@ -509,3 +509,68 @@ class RAGEngine:
         except Exception as e:
             print(f"❌ 벡터 인덱스 생성 실패: {str(e)}")
             return False
+        
+    # rag/services/rag_engine.py에 추가할 메소드들
+
+    def validate_document_based_answer(self, answer: str) -> bool:
+        """답변이 문서 기반인지 검증"""
+        # 문서 기반 답변의 특징
+        document_indicators = [
+            '제', '조', '항', '계약서', '조항', '명시', '규정', '정함',
+            '따르면', '의하면', '기재', '포함', '내용', '문서'
+        ]
+        
+        # 일반 지식 기반 답변의 특징 (금지)
+        general_indicators = [
+            '일반적으로', '보통', '대개', '통상', '법률에서', '법적으로',
+            '일반적인', '통상적인', '법률상', '일반론'
+        ]
+        
+        # 문서 기반 지표 확인
+        doc_score = sum(1 for indicator in document_indicators if indicator in answer)
+        
+        # 일반 지식 지표 확인 (패널티)
+        general_score = sum(1 for indicator in general_indicators if indicator in answer)
+        
+        print(f"🔍 답변 검증: 문서기반({doc_score}) vs 일반지식({general_score})")
+        
+        # 문서 기반 지표가 2개 이상이고, 일반 지식 지표가 1개 이하여야 통과
+        return doc_score >= 2 and general_score <= 1
+
+    def generate_document_only_answer(self, question: str, context: str) -> str:
+        """문서만을 기반으로 한 답변 생성 (폴백)"""
+        from .translator import AnalysisService
+        
+        print("🔄 문서 전용 답변 생성 중...")
+        
+        prompt = f"""아래 계약서 조항들만을 바탕으로 질문에 답변하세요.
+
+    질문: {question}
+
+    계약서 조항들:
+    {context}
+
+    **절대 규칙**:
+    - 위 조항들에 없는 내용은 절대 답변하지 마세요
+    - "일반적으로", "보통", "법률상" 같은 표현 사용 금지
+    - 반드시 "제○조에 따르면" 형식으로 인용하세요
+    - 조항에 없으면 "해당 내용이 계약서에 명시되지 않았습니다"라고 하세요
+
+    조항의 내용만으로 답변하세요."""
+
+        try:
+            analysis_service = AnalysisService()
+            response = analysis_service.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "계약서 조항만을 인용하는 전문가. 일반 지식은 절대 사용하지 않음."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=800,
+                temperature=0.01
+            )
+
+            return response.choices[0].message.content.strip()
+
+        except Exception as e:
+            return f"계약서 내용을 확인할 수 없습니다. 오류: {str(e)}"
