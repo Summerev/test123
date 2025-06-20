@@ -26,9 +26,8 @@ def get_combine_summaries_prompt(summary_list, doc_type_name):
 """
 
 # --- 위험 요소 식별 관련 프롬프트 ---
-def get_risk_factors_prompt(full_text: str, language: str):
-    prompts = {
-        'ko': """
+def get_risk_factors_prompt(full_text: str):
+    return f"""    
 다음은 약관 전체 원문입니다. 아래와 같은 내용을 조항 번호와 함께 정리해주세요:
 
 ### 면책 또는 손해배상 조항
@@ -40,10 +39,9 @@ def get_risk_factors_prompt(full_text: str, language: str):
 - 법적 분쟁, 계약 해지, 이용제한 등 고객에게 법적 영향을 줄 수 있는 조항
 
 각 항목마다 관련된 조항 번호(예: 제15조)를 명시해 주세요.
-""",
-        'en': "From the following document text, extract any clauses related to disclaimer, liability, or compensation. Include clause numbers like 'Clause 15' where relevant."
-    }
-    selected_prompt = prompts.get(language, prompts['ko'])
-    return f"{selected_prompt}\n\n[원문]\n{full_text[:12000]}"
+
+[원문]
+{full_text[:12000]}
+"""
 
 

@@ -1,11 +1,13 @@
 // legal_web/static/js/ui/fileUpLoadUI.js (정리된 최종 버전)
 
+import { getCookie } from '../utils/domHelpers.js';
 import { createNewSession } from '../ui/chatUI.js';
 import { saveChatSessionInfo, getChatSessionList, setChatEnabled, addMessageToChatAndHistory  } from '../data/chatHistoryManager.js';
 import { renderRecentChats, addMessageToUI } from './chatUI.js';
 import { getActiveTab, chatSessions, openTabs } from '../state/chatTabState.js';
 import { renderTabBar } from './chatTabUI.js';
 import { saveTabState } from '../state/chatTabState.js';
+import { getCurrentLanguage } from '../data/translation.js';
 
 // DOM 요소 참조
 let welcomeMessageDiv;
@@ -18,22 +20,6 @@ let browseFileButton;
 let dropArea;
 let fileInfoMessage;
 let chatInputContainer;
-
-// CSRF 토큰을 가져오는 헬퍼 함수 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
 
 
 
@@ -484,17 +470,17 @@ async function uploadFileToServer(file, docType, sessionId) {
     if (docType === 'terms') {
         // --- '약관' 유형일 경우: 새로운 RAG API 호출 ---
         try {
-            const apiUrl = '/api/rag/analyze/'; // URL을 변수로 명확하게 선언
-            console.log(`[RAG] '약관' 유형으로 ${apiUrl} API를 호출합니다.`);
-            
             const formData = new FormData();
             formData.append('file', file);
             formData.append('doc_type', docType);
             formData.append('session_id', sessionId);
 
-            const response = await fetch(apiUrl, { // 변수를 사용하여 호출
+            // ★★★ translation.js의 함수를 사용하여 현재 언어 코드를 가져와 FormData에 추가 ★★★
+            formData.append('language', getCurrentLanguage());
+
+            const response = await fetch('/api/rag/analyze/', {
                 method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }, // 여기서 사용
                 body: formData,
             });
 

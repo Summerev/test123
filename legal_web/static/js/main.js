@@ -1,5 +1,5 @@
 // static/js/main.js
-import { $, $$, on } from './utils/domHelpers.js';
+import { $, $$, on, getCookie } from './utils/domHelpers.js';
 import { loginUser, signupUser, logoutUser, getCurrentUser, isLoggedIn } from './api/authAPI.js';
 import {
     getTranslation, applyTranslations, changeLanguage,
@@ -33,6 +33,8 @@ import { createTab, renderTabBar, restoreTabs, } from './ui/chatTabUI.js'
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
 import { initFileUpload } from './ui/fileUpLoadUI.js';
+
+
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -116,38 +118,83 @@ export function handleSendMessage() {
 
 
 async function processUserMessage(text, tabId) {
-    // 응답 텍스트 생성 (나중에 실제 AI API로 교체)
-    const responseText = `"${text}"에 대한 기본 설명입니다. 이 내용을 더 자세히 설명해드릴까요?`;
+    // 1. "AI가 답변 중..." 이라는 임시 메시지를 UI에 먼저 표시
+    const thinkingMessageId = generateMessageId();
+    addMessageToUI('AI가 답변을 생성 중입니다...', 'bot', thinkingMessageId, new Date().toISOString(), false, true);
 
-    // 봇 메시지 생성 (고유 ID 포함)
-    const botMsg = {
-        id: generateMessageId(), // 고유 메시지 ID 생성
-        sender: 'bot',
-        text: responseText,
-        timestamp: new Date().toISOString()
-    };
+    try {
+        // 2. 백엔드 API 호출
+        const response = await fetch('/chatbot/chat-api/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') 
+            },
+            body: JSON.stringify({
+                message: text,
+                session_id: tabId,
+                // 현재 탭의 문서 유형 가져오기 (openTabs에 저장된 정보 활용)
+                docType: openTabs[tabId]?.docType || 'terms', 
+                // 이전 대화 기록 전달 (마지막 사용자 메시지는 제외)
+                history: (chatSessions[tabId] || []).slice(0, -1), 
+                // ★★★ 현재 선택된 언어 코드 전달 ★★★
+                language: getCurrentLanguage() 
+            })
+        });
+        
+        // 3. 응답 처리
+        const thinkingMessageElement = document.getElementById(thinkingMessageId);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ reply: '서버에서 오류가 발생했습니다.' }));
+            // 임시 메시지를 에러 메시지로 교체
+            if (thinkingMessageElement) {
+                const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
+                if (messageBubble) {
+                    messageBubble.textContent = `❌ 오류: ${errorData.error || errorData.reply}`;
+                    thinkingMessageElement.classList.remove('is-temporary');
+                }
+            }
+            return; // 에러 발생 시 함수 종료
+        }
 
-    const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
-    
-    if (!chatSessions[activeTabId]) {
-        chatSessions[activeTabId] = [];
+        const data = await response.json();
+        const botReply = data.reply;
+
+        // 4. 실제 AI 답변으로 UI 업데이트
+        const botMsg = {
+            id: thinkingMessageId, // 임시 메시지와 같은 ID를 사용하여 교체
+            sender: 'bot',
+            text: botReply,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 임시 메시지 내용을 실제 답변으로 업데이트
+        if (thinkingMessageElement) {
+            const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
+            if (messageBubble) {
+                // innerHTML을 사용하여 줄바꿈(\n)을 <br>로 렌더링
+                messageBubble.innerHTML = botReply.replace(/\n/g, '<br>');
+                thinkingMessageElement.classList.remove('is-temporary');
+            }
+        }
+        
+        // 5. 세션 기록에 실제 봇 답변 저장
+        // (임시 메시지는 세션에 저장하지 않았으므로, 여기서 추가)
+        chatSessions[tabId].push(botMsg);
+        saveTabState();
+
+    } catch (error) {
+        // 네트워크 오류 등 fetch 자체의 실패
+        console.error('Error processing user message:', error);
+        const thinkingMessageElement = document.getElementById(thinkingMessageId);
+        if (thinkingMessageElement) {
+             const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
+             if (messageBubble) {
+                messageBubble.textContent = `❌ 네트워크 오류: ${error.message}`;
+                thinkingMessageElement.classList.remove('is-temporary');
+             }
+        }
     }
-
-    // 세션에 봇 메시지 저장
-    chatSessions[activeTabId].push(botMsg);
-    
-    // UI에 봇 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
-    addMessageToUI(
-        botMsg.text,         // messageText
-        botMsg.sender,       // sender
-        botMsg.id,           // messageId
-        botMsg.timestamp,    // timestamp
-        false,               // isHistory
-        false                // isTemporary
-    );
-    
-    // 상태 저장
-    saveTabState();
 }
 
 // --- Tab Rendering (변경 없음) ---

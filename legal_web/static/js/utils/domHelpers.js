@@ -65,3 +65,25 @@ export function on(element, eventType, handler) {
 export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
+
+
+/**
+ * 쿠키 이름으로 쿠키 값을 가져옵니다. (CSRF 토큰 등에 사용)
+ * @param {string} name - 가져올 쿠키의 이름
+ * @returns {string|null} 쿠키 값 또는 null
+ */
+export function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}

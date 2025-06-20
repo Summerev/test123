@@ -16,6 +16,7 @@ def analyze_document_view(request):
     uploaded_file = request.FILES.get('file')
     doc_type = request.POST.get('doc_type')
     session_id = request.POST.get('session_id')
+    language = request.POST.get('language', 'ko')
 
     if not all([uploaded_file, doc_type, session_id]):
         return JsonResponse({'error': '파일, 문서 유형, 세션 ID가 모두 필요합니다.'}, status=400)
@@ -25,7 +26,8 @@ def analyze_document_view(request):
         user=request.user, 
         uploaded_file=uploaded_file, 
         doc_type=doc_type,
-        session_id=session_id
+        session_id=session_id,
+        language=language
     )
 
     if not analysis_result.get('success'):
