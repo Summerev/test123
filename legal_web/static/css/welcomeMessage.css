@@ -1,0 +1,183 @@
+/* static/css/welcome_messages.css */
+
+.welcome-message {
+    text-align: center;
+    max-width: 600px;
+    margin: auto; /* flex-grow와 함께 중앙 정렬 */
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 세로 중앙 정렬 */
+    height: 100%; /* 부모 .chat-messages의 높이를 채우도록 */
+}
+
+.welcome-message.hidden {
+    display: none;
+}
+
+.welcome-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-accent), var(--primary-accent-darker));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    color: var(--primary-accent-text);
+    font-size: 2rem;
+}
+
+.welcome-message h3 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+.welcome-message p {
+    color: var(--icon-color);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+/* 파일 업로드 섹션 스타일 */
+.upload-section {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--chat-container-bg);
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.upload-section h4 {
+    font-size: 1.2em;
+    color: var(--text-color);
+    margin-bottom: 15px;
+}
+
+.document-type-selection {
+    margin-top: 10px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.type-button {
+    padding: 12px 25px;
+    border: 1px solid var(--primary-accent);
+    border-radius: 25px;
+    background-color: var(--button-bg);
+    color: var(--primary-accent);
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.type-button:hover {
+    background-color: var(--button-hover-bg);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.type-button.selected {
+    background-color: var(--primary-accent);
+    color: var(--primary-accent-text);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary-accent-darker);
+}
+
+/* 드래그 앤 드롭 영역 CSS */
+.drop-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    color: var(--icon-color);
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    background-color: var(--input-bg);
+    position: relative;
+}
+
+.drop-area p {
+    margin: 5px 0;
+    font-size: 1.1em;
+}
+
+.drop-area.active {
+    border-color: var(--primary-accent);
+    background-color: var(--button-hover-bg);
+    color: var(--text-color);
+    transform: scale(1.02);
+}
+
+.drop-area.enabled {
+    cursor: pointer;
+    background-color: var(--input-bg);
+    border-color: var(--primary-accent);
+    opacity: 1;
+}
+
+.drop-area.disabled {
+    background-color: var(--input-disabled-bg, #f5f5f5);
+    cursor: not-allowed;
+    border-color: var(--border-color);
+    opacity: 0.6;
+}
+
+#browseFileButton {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 1em;
+    border-radius: 8px;
+    border: 1px solid var(--primary-accent);
+    background-color: var(--primary-accent);
+    color: var(--primary-accent-text);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#browseFileButton:hover {
+    background-color: var(--primary-accent-darker);
+}
+
+.file-upload-info {
+    font-size: 0.9em;
+    color: var(--icon-color);
+    margin-top: 10px;
+    text-align: center;
+    display: block; /* 기본적으로 표시 */
+}
+
+.file-name-display {
+    font-weight: bold;
+    color: var(--primary-accent);
+    margin-top: 15px;
+    font-size: 1em;
+    min-height: 1.2em; /* 높이 고정으로 레이아웃 깨짐 방지 */
+    display: none; /* 초기에는 숨김 */
+}
+
+.file-name-display:empty {
+    display: none; /* 내용이 없으면 완전히 숨김 */
+}
+
+.file-name-display:not(:empty) {
+    display: block; /* 내용이 있을 때만 표시 */
+}
+
+.welcome-message.reset {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

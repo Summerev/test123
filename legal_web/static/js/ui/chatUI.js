@@ -1,23 +1,27 @@
-// static/js/ui/chatUI.js
+// static/js/ui/chatUI.js (수정된 내용)
+
 import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelpers.js';
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
 import {
     formatTimestamp,
-    saveChatHistoryWithTitle,
+    saveChatSessionInfo,
     clearAllChats,
     loadChatHistoryFromStorage,
     getChatHistory,
 } from '../data/chatHistoryManager.js';
-import { handleFileUpload } from '../logic/chatProcessor.js';
-import { switchTab as selectTab, createTab, renderTabs, generateSessionId, switchTab } from '../main.js';
+
+import { generateSessionId } from '../main.js';
+import { createTab, renderTabBar, switchTab } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
+import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
 
 let attachments = [];
 const chatInput = $('#chatInput');
 const sendButton = $('#sendButton');
 const chatMessagesContainer = $('#chatMessages');
 const welcomeMessage = $('#welcomeMessage');
+let messageIdCounter = parseInt(localStorage.getItem('legalBotMessageIdCounter')) || 0;
 
 /**
  * Initializes the auto-resizing behavior for the chat input field
@@ -32,7 +36,6 @@ export function initChatInputAutoResize() {
         sendButton.disabled = this.value.trim() === ''; // Disable if empty
     });
 
-    // Trigger input event once on load to set initial height and button state
     chatInput.dispatchEvent(new Event('input'));
 }
 
@@ -54,48 +57,88 @@ export function initExamplePrompts() {
     });
 }
 
-/**
- * Adds a message to the UI.
- * @param {string} messageText - The content of the message.
- * @param {'user'|'bot'} sender - The sender of the message ('user' or 'bot').
- * @param {string} messageId - Unique ID for the message element.
- * @param {string} timestamp - ISO timestamp string for the message.
- * @param {boolean} [isHistory=false] - True if the message is being loaded from history.
- * @returns {HTMLElement} The created message element.
- */
-export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false) {
+export function initChatUI() {
+    // 이 함수가 DOMContentLoaded 시점에 호출되면
+    // chatInput과 sendButton이 이미 HTML에 존재하고
+    // 상단에서 $() 셀렉터로 변수에 할당된 상태일 것입니다.
+    activateChatInput(false); // 초기에는 채팅 입력 비활성화
+    // 필요한 다른 채팅 UI 관련 초기화 로직도 여기에 추가
+    initChatInputAutoResize(); // 입력창 자동 높이 조절 초기화
+    // initSendMessageEvents(); // 메시지 전송 이벤트는 파일 업로드 후 활성화될 때 붙이는 것이 논리적입니다.
+                               // 이 부분은 나중에 '활성화' 시점에 붙이도록 변경하는 것을 고려해보세요.
+                               // 지금은 activateChatInput(true) 될 때 전송 버튼이 활성화되므로
+                               // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
+}
+
+export function generateMessageId() {
+	messageIdCounter++;
+	localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
+	return `msg-${Date.now()}-${messageIdCounter}`;
+}
+
+export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false, isTemporary = false) {
     if (!chatMessagesContainer) {
         console.warn('Chat messages container not found.');
         return null;
     }
 
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    messageElement.dataset.messageId = messageId;
+    // 기존에 같은 ID의 메시지가 있는지 확인
+    if (messageId) {
+        const existingMessage = chatMessagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (existingMessage) {
+            console.log('기존 메시지 업데이트:', messageId);
+            // 기존 메시지의 내용만 업데이트
+            const messageTextElement = existingMessage.querySelector('.message-content') || 
+                                     existingMessage.querySelector('.message-text');
+            if (messageTextElement) {
+                messageTextElement.innerHTML = messageText.replace(/\n/g, '<br>');
+            }
+            return existingMessage;
+        }
+    }
 
-    const timestampSpan = document.createElement('span');
-    timestampSpan.classList.add('message-timestamp');
-    timestampSpan.textContent = formatTimestamp(timestamp);
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('chat-message');
+    
+    if (messageId) {
+        messageElement.dataset.messageId = messageId;
+    }
+    if (isTemporary) {
+        messageElement.classList.add('temporary-message');
+    }
+
+    const messageBubble = document.createElement('div');
+    messageBubble.classList.add('message-bubble');
 
     if (sender === 'user') {
         messageElement.classList.add('user-message');
-        const textNode = document.createTextNode(messageText);
-        messageElement.appendChild(textNode);
-        messageElement.appendChild(timestampSpan);
-    } else { // sender === 'bot'
+        
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-text');
+        messageContent.textContent = messageText;
+        messageBubble.appendChild(messageContent);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
+        
+    } else if (sender === 'bot') {
         messageElement.classList.add('bot-message');
 
         const botNameSpan = document.createElement('span');
         botNameSpan.classList.add('bot-name');
         botNameSpan.textContent = getTranslation('botName');
-        messageElement.appendChild(botNameSpan);
+        messageBubble.appendChild(botNameSpan);
 
-        const messageContentSpan = document.createElement('span');
+        const messageContentSpan = document.createElement('div');
         messageContentSpan.classList.add('message-content');
 
-        // Logic for highlighting legal terms and adding tooltips
+        // 법률 용어 하이라이팅 로직 (기존 코드 유지)
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = messageText;
+        tempDiv.innerHTML = messageText.replace(/\n/g, '<br>');
 
         function highlightTerms(node) {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -182,30 +225,81 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
                 Array.from(node.childNodes).forEach(highlightTerms);
             }
         }
+        
         Array.from(tempDiv.childNodes).forEach(highlightTerms);
         messageContentSpan.innerHTML = tempDiv.innerHTML;
-        messageElement.appendChild(messageContentSpan);
-        messageElement.appendChild(timestampSpan);
+        messageBubble.appendChild(messageContentSpan);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
 
-        // Add feedback buttons
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.classList.add('feedback-buttons');
-        feedbackDiv.innerHTML = `
-            <span data-translate-key="feedbackQuestion">${getTranslation('feedbackQuestion')}</span>
-            <button class="feedback-yes" data-feedback="yes" data-message-id="${messageId}">${getTranslation('feedbackYes')}</button>
-            <button class="feedback-no" data-feedback="no" data-message-id="${messageId}">${getTranslation('feedbackNo')}</button>
-        `;
-        messageElement.appendChild(feedbackDiv);
+        // 피드백 버튼 추가 (파일 업로드 메시지가 아닌 경우에만)
+        if (!messageText.includes('업로드') && !messageText.includes('파일')) {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.classList.add('feedback-buttons');
+            feedbackDiv.innerHTML = `
+                <span data-translate-key="feedbackQuestion">${getTranslation('feedbackQuestion')}</span>
+                <button class="feedback-yes" data-feedback="yes" data-message-id="${messageId}">${getTranslation('feedbackYes')}</button>
+                <button class="feedback-no" data-feedback="no" data-message-id="${messageId}">${getTranslation('feedbackNo')}</button>
+            `;
+            messageBubble.appendChild(feedbackDiv);
+        }
+        
+    } else if (sender === 'system') {
+        messageElement.classList.add('system-message');
+        
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-text');
+        messageContent.textContent = messageText;
+        messageBubble.appendChild(messageContent);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
     }
 
+    messageElement.appendChild(messageBubble);
+    
+    // 메시지 컨테이너에 추가하기 전에 웰컴 메시지가 숨겨져 있는지 확인
+    if (welcomeMessage && !welcomeMessage.classList.contains('hidden')) {
+        welcomeMessage.classList.add('hidden');
+    }
+    
     chatMessagesContainer.appendChild(messageElement);
 
-    // Scroll to bottom after adding new message
+    // 스크롤을 맨 아래로 이동 (히스토리 로딩이 아닌 경우에만)
     if (!isHistory) {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
+    
+    console.log('메시지 UI 추가 완료:', messageId, sender, messageText.substring(0, 50) + '...');
     return messageElement;
 }
+
+
+/**
+ * 채팅 입력 필드와 전송 버튼을 활성화하거나 비활성화합니다.
+ * @param {boolean} enable - true면 활성화, false면 비활성화.
+ */
+export function activateChatInput(enable) {
+    if (chatInput && sendButton) {
+        chatInput.disabled = !enable;
+        sendButton.disabled = !enable || chatInput.value.trim() === '';
+        if (enable) {
+            chatInput.focus();
+        }
+    } else {
+        console.warn('activateChatInput: chatInput or sendButton not found.');
+    }
+}
+
 
 /**
  * Scrolls the chat messages container to the bottom.
@@ -229,24 +323,7 @@ export function toggleWelcomeMessage(hide) {
     }
 }
 
-export function initGlobalFileDropOverlay() {
-    const overlay = document.getElementById('fileDropOverlay');
-    if (!overlay) return;
 
-    let dragTimeout;
-    document.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        overlay.classList.add('visible');
-        clearTimeout(dragTimeout);
-        dragTimeout = setTimeout(() => overlay.classList.remove('visible'), 200);
-    });
-    document.addEventListener('drop', (e) => {
-        e.preventDefault();
-        overlay.classList.remove('visible');
-        const file = e.dataTransfer.files[0];
-        if (file) handleFileUpload(file);
-    });
-}
 
 /**
  * 최근 대화 목록 렌더링
@@ -289,9 +366,9 @@ export function renderRecentChats(chatList) {
         // 클릭하면 탭 생성/전환
         li.addEventListener('click', () => {
             if (!openTabs[chat.id]) {
-              createTab(chat.id, chat.title);
+                createTab(chat.id, chat.title);
             }
-            selectTab(chat.id);
+            switchTab(chat.id);
         });
 
         ul.appendChild(li);
@@ -328,83 +405,82 @@ function createContextMenu(id, title) {
     return menu;
 }
 
+// 세션 추가
 export function createNewSession() {
     const sessionId = generateSessionId();
-    chatSessions[sessionId] = [];
-    setActiveTab(sessionId);
+    chatSessions[sessionId] = []; // 새 세션의 빈 메시지 배열 초기화
 
     if (!openTabs[sessionId]) {
         openTabs[sessionId] = { title: '새 대화' };
     }
 
-    renderTabs();
+    renderTabBar();
     switchTab(sessionId);
-    saveChatHistoryWithTitle(sessionId, '새 대화');
+    saveChatSessionInfo(sessionId, '새 대화');
     renderRecentChats(getChatSessionList());
 
-    return sessionId;  // 이게 핵심
+    // 새 채팅방 생성 시 입력창 완전 초기화 및 비활성화
+    const chatInput = $('#chatInput');
+    if (chatInput) {
+        chatInput.value = '';
+        chatInput.placeholder = '파일을 업로드하기 전에 질문을 입력할 수 없습니다.'; // 메시지 변경
+        chatInput.disabled = true; // <--- 이 부분을 true로 설정하여 비활성화
+        chatInput.style.height = 'auto'; // 높이도 초기화
+    }
+
+    // 전송 버튼 초기화 (비활성화)
+    const sendButton = $('#sendButton');
+    if (sendButton) {
+        sendButton.disabled = true; // 처음에는 비활성화 (현재 코드와 동일)
+    }
+
+    // 웰컴 메시지 강제 초기화
+    const welcomeMessage = $('#welcomeMessage');
+    const chatMessages = $('#chatMessages');
+    if (welcomeMessage && chatMessages) {
+        chatMessages.innerHTML = '';
+        welcomeMessage.classList.remove('hidden');
+        chatMessages.appendChild(welcomeMessage);
+        
+        // 파일 업로드 폼 강제 리셋
+        if (forceResetWelcomeMessage) {
+            forceResetWelcomeMessage();
+        }
+    }
+
+    console.log(`새 채팅방 생성 및 완전 초기화: ${sessionId}`);
+    return sessionId;
 }
 
 function handleRename(id, oldTitle) {
     const newTitle = prompt('새 이름 입력', oldTitle);
     if (newTitle) {
         // 1) 타이틀 저장소에 반영
-        saveChatHistoryWithTitle(id, newTitle);
+        saveChatSessionInfo(id, newTitle);
         // 2) 사이드바 목록 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
-        updateTabTitle(id, newTitle);
+        updateTabTitle(id, newTitle); // updateTabTitle 함수가 정의되어 있지 않습니다. 이 함수도 추가해야 할 수 있습니다.
     }
 }
+
 
 function handleDelete(id) {
     if (confirm('정말 삭제하시겠습니까?')) {
         // 1) 저장소에서 삭제
-        deleteChatSession(id, chatSessions, openTabs);
+        deleteChatSession(id);
 
-        // 2) 사이드바 갱신
-        renderRecentChats(getChatSessionList());
+        // 2) 사이드바 갱신 (deleteChatSession 내부에서 이미 수행됨)
+        // renderRecentChats(getChatSessionList());
 
-        // 3) 탭도 닫아주기
-        const remainingTabIds = Object.keys(openTabs);
-        const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
-        selectTab(fallbackId);
+        // 3) 탭도 닫아주기 (deleteChatSession 내부에서 이미 처리됨)
+        // const remainingTabIds = Object.keys(openTabs);
+        // const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
+        // switchTab(fallbackId);
     }
-}
-
-function switchToChat(id) {
-    selectTab(id);
-}
-
-function renameChat(id, newTitle) {
-    saveChatHistoryWithTitle(id, newTitle);
-    renderRecentChats(getChatHistory());
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     renderRecentChats(getChatHistory());
     document.addEventListener('click', closeAllContextMenus);
 });
-
-/** 파일 드래그앤드롭 초기화 */
-export function initFileDragAndDrop() {
-    const dropArea = document.getElementById('chatMessages');
-    if (!dropArea) return;
-
-    dropArea.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropArea.classList.add('drag-over');
-    });
-    dropArea.addEventListener('dragleave', e => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-over');
-    });
-    dropArea.addEventListener('drop', e => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleFileUpload(file);
-        }
-    });
-}

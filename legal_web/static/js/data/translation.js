@@ -967,7 +967,7 @@ let enterKeySends =
     : localStorage.getItem('legalBotEnterKeySends') === 'true';
 
 let feedbackData = JSON.parse(localStorage.getItem('legalBotFeedbackData')) || [];
-let messageIdCounter = parseInt(localStorage.getItem('legalBotMessageIdCounter')) || 0;
+
 
 /**
  * Returns the translated text for a given key in the current language.
@@ -1020,8 +1020,7 @@ export function changeLanguage(lang) {
     localStorage.setItem('legalBotLanguage', lang);
     document.documentElement.lang = lang;
     applyTranslations();
-    // Note: loadChatHistoryFromStorage and loadRecentChats are called from main.js
-    // after language change event is dispatched.
+
 	const selectedLanguageText = getTranslation(`${lang === 'ko' ? 'koreanTerm' :
                                                   lang === 'en' ? 'englishTerm' :
                                                   lang === 'ja' ? 'japaneseTerm' :
@@ -1094,15 +1093,7 @@ export function addFeedbackData(newFeedback) {
     localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
 }
 
-/**
- * Generates a unique message ID.
- * @returns {string} A new unique message ID.
- */
-export function generateMessageId() {
-    messageIdCounter++;
-    localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
-    return `msg-${Date.now()}-${messageIdCounter}`;
-}
+
 
 /**
  * Returns the legal terms dictionary.

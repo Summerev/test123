@@ -33,10 +33,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'debug_toolbar',
-    'apps.main',
-    'apps.chatbot',
-    'apps.accounts',
-    'apps.admin_ui',
+    'apps.main',		# 메인
+    'apps.chatbot',		# 
+    'apps.accounts',	# 계정
+    'apps.admin_ui',	# 어드민(아직 x)
+    'apps.documents',	# 문서 처리 관련된건 여기로
+
     'apps.rag',
 ]
 
