@@ -1,4 +1,4 @@
-// static/js/chat_enhanced.js - RAG 기능 통합 JavaScript
+// static/js/chat_enhanced.js - RAG 기능 통합 JavaScript (오류 수정)
 
 class EnhancedChatManager {
     constructor() {
@@ -10,7 +10,8 @@ class EnhancedChatManager {
 
     init() {
         this.bindEvents();
-        this.checkCurrentDocument();
+        // API가 준비되지 않은 경우를 대비해 초기 문서 체크는 선택적으로
+        this.checkCurrentDocumentSafely();
         this.setupLanguageSelector();
     }
 
@@ -49,7 +50,8 @@ class EnhancedChatManager {
         }
     }
 
-    async checkCurrentDocument() {
+    async checkCurrentDocumentSafely() {
+        // API가 아직 준비되지 않은 경우를 대비한 안전한 체크
         try {
             const response = await fetch('/chatbot/api/current-document/', {
                 method: 'GET',
@@ -59,13 +61,21 @@ class EnhancedChatManager {
                 }
             });
 
-            const data = await response.json();
-            if (data.success && data.document) {
-                this.currentDocument = data.document;
-                this.updateDocumentStatus();
+            // 응답이 HTML인지 JSON인지 확인
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (data.success && data.document) {
+                    this.currentDocument = data.document;
+                    this.updateDocumentStatus();
+                }
+            } else {
+                // HTML 응답인 경우 (아직 API가 준비되지 않음)
+                console.log('📝 API가 아직 준비되지 않음 - 기존 방식으로 동작');
             }
         } catch (error) {
-            console.log('현재 문서 확인 중 오류:', error);
+            console.log('📝 현재 문서 확인 중 오류:', error.message);
+            // 오류가 발생해도 계속 진행 (기존 방식으로 동작)
         }
     }
 
@@ -198,6 +208,8 @@ class EnhancedChatManager {
 
     showMessage(type, content) {
         const messagesContainer = document.getElementById('chatMessages');
+        if (!messagesContainer) return;
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
 
@@ -286,6 +298,7 @@ class EnhancedChatManager {
             
             // 이벤트 리스너 재연결
             document.getElementById('clearDocumentBtn')?.addEventListener('click', () => this.clearCurrentDocument());
+            statusDiv.style.display = 'block';
         } else {
             statusDiv.innerHTML = `
                 <div class="document-status inactive">
@@ -293,6 +306,7 @@ class EnhancedChatManager {
                     <span class="status-text">문서 없음 (일반 채팅)</span>
                 </div>
             `;
+            statusDiv.style.display = 'block';
         }
     }
 
@@ -311,19 +325,22 @@ class EnhancedChatManager {
 
     async clearCurrentDocument() {
         try {
-            const response = await fetch('/chatbot/api/clear-document/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': this.getCSRFToken(),
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                this.currentDocument = null;
-                this.updateDocumentStatus();
-                this.showMessage('system', '📄 문서가 초기화되었습니다. 일반 채팅 모드로 전환됩니다.');
+            // API가 준비되지 않은 경우를 대비한 안전한 처리
+            this.currentDocument = null;
+            this.updateDocumentStatus();
+            this.showMessage('system', '📄 문서가 초기화되었습니다. 일반 채팅 모드로 전환됩니다.');
+            
+            // API 호출 시도 (실패해도 무시)
+            try {
+                await fetch('/chatbot/api/clear-document/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': this.getCSRFToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (apiError) {
+                console.log('API 호출 실패 (무시됨):', apiError.message);
             }
         } catch (error) {
             console.error('문서 초기화 오류:', error);
@@ -394,24 +411,42 @@ class EnhancedChatManager {
     }
 }
 
-// 페이지 로드 시 채팅 매니저 초기화
+// 페이지 로드 시 채팅 매니저 초기화 (안전한 방식)
 document.addEventListener('DOMContentLoaded', () => {
-    window.chatManager = new EnhancedChatManager();
-    
-    // 예시 프롬프트 클릭 이벤트
-    document.querySelectorAll('.example-prompt').forEach(prompt => {
-        prompt.addEventListener('click', () => {
-            const text = prompt.getAttribute('data-prompt-text');
-            document.getElementById('chatInput').value = text;
+    try {
+        window.chatManager = new EnhancedChatManager();
+        
+        // 예시 프롬프트 클릭 이벤트
+        document.querySelectorAll('.example-prompt').forEach(prompt => {
+            prompt.addEventListener('click', () => {
+                const text = prompt.getAttribute('data-prompt-text');
+                const chatInput = document.getElementById('chatInput');
+                if (chatInput) {
+                    chatInput.value = text;
+                }
+            });
         });
-    });
+        
+        console.log('✅ RAG 채팅 매니저 초기화 완료');
+    } catch (error) {
+        console.error('❌ 채팅 매니저 초기화 실패:', error);
+        // 실패해도 기존 방식으로 동작하도록
+    }
 });
 
 // 전역 함수들 (기존 코드와의 호환성)
 function sendMessage() {
-    window.chatManager?.sendMessage();
+    if (window.chatManager) {
+        window.chatManager.sendMessage();
+    } else {
+        console.log('chatManager가 초기화되지 않음');
+    }
 }
 
 function handleFileUpload(event) {
-    window.chatManager?.handleFileUpload(event);
+    if (window.chatManager) {
+        window.chatManager.handleFileUpload(event);
+    } else {
+        console.log('chatManager가 초기화되지 않음');
+    }
 }
