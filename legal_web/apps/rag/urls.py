@@ -8,8 +8,8 @@ app_name = 'rag'
 
 urlpatterns = [
     # API 엔드포인트
-    path('analyze/', views.analyze_document_view, name='analyze'),
-    path('ask/', views.ask_question_view, name='ask'),
+    #path('analyze/', views.analyze_document_view, name='analyze'),
+    #path('ask/', views.ask_question_view, name='ask'),
 
     # 기존 테스트용 페이지 URL 
     #path('query/', views.rag_query, name='query_page'),

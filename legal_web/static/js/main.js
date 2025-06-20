@@ -116,100 +116,38 @@ export function handleSendMessage() {
 
 
 async function processUserMessage(text, tabId) {
-    const activeTabId = tabId || getActiveTab();
+    // 응답 텍스트 생성 (나중에 실제 AI API로 교체)
+    const responseText = `"${text}"에 대한 기본 설명입니다. 이 내용을 더 자세히 설명해드릴까요?`;
+
+    // 봇 메시지 생성 (고유 ID 포함)
+    const botMsg = {
+        id: generateMessageId(), // 고유 메시지 ID 생성
+        sender: 'bot',
+        text: responseText,
+        timestamp: new Date().toISOString()
+    };
+
+    const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
     
-    // CSRF 토큰을 가져오는 헬퍼 함수 (필요한 경우)
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    if (!chatSessions[activeTabId]) {
+        chatSessions[activeTabId] = [];
     }
+
+    // 세션에 봇 메시지 저장
+    chatSessions[activeTabId].push(botMsg);
     
-    // 임시 로딩 메시지 UI에 표시 (선택사항)
-    const tempMsgId = 'temp-bot-msg-' + Date.now();
-    addMessageToUI('답변을 생성 중입니다...', 'bot', tempMsgId, new Date().toISOString(), false, true);
+    // UI에 봇 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
+    addMessageToUI(
+        botMsg.text,         // messageText
+        botMsg.sender,       // sender
+        botMsg.id,           // messageId
+        botMsg.timestamp,    // timestamp
+        false,               // isHistory
+        false                // isTemporary
+    );
     
-    try {
-        let responseText;
-
-        // 현재 탭의 문서 유형 확인
-        const docType = getChatSessionInfo(activeTabId)?.docType;
-        console.log(`[질문 처리] 세션: ${activeTabId}, 문서 유형: ${docType}`);
-        
-        if (docType === 'terms') {
-            // --- '약관' 탭일 경우: 새로운 RAG 질의응답 API 호출 ---
-            console.log("[RAG] '약관' 탭 질문. 새로운 /api/rag/ask/ API를 호출합니다.");
-
-            const requestBody = {
-                question: text,
-                session_id: activeTabId,
-                history: chatSessions[activeTabId] || []
-            };
-
-            const response = await fetch('/api/rag/ask/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify(requestBody)
-            });
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || '답변 생성에 실패했습니다.');
-            }
-            responseText = result.answer;
-
-        } else {
-            // --- '계약서' 또는 일반 탭일 경우: 기존 로직 호출 ---
-            // (현재는 목업 응답, 나중에 계약서용 API로 교체될 수 있음)
-            console.log("[기존] 일반 질문으로 처리합니다.");
-            
-            // 기존 코드의 로직을 그대로 유지합니다.
-            // 여기서는 간단한 목업으로 대체합니다. 실제 코드는 다를 수 있습니다.
-            // TODO: 계약서용 API가 있다면 여기에 연결.
-            responseText = `"${text}"에 대한 기본 설명입니다. 이 내용은 더 자세히 설명해드릴까요? (기존 로직)`;
-            await new Promise(resolve => setTimeout(resolve, 300)); // 인공적인 딜레이
-        }
-
-
-        // 임시 로딩 메시지 제거
-        const tempMsgElement = document.getElementById(tempMsgId);
-        if (tempMsgElement) tempMsgElement.remove();
-
-        // 봇 메시지 생성
-        const botMsg = {
-            id: generateMessageId(),
-            sender: 'bot',
-            text: responseText,
-            timestamp: new Date().toISOString()
-        };
-
-        // 메시지 추가 및 저장
-        addMessageToChatAndHistory(activeTabId, botMsg);
-
-    } catch (error) {
-        // 공통 에러 처리
-        const tempMsgElement = document.getElementById(tempMsgId);
-        if (tempMsgElement) tempMsgElement.remove();
-
-        console.error('질문 처리 중 오류 발생:', error);
-        addMessageToChatAndHistory(activeTabId, {
-            id: generateMessageId(),
-            sender: 'bot',
-            text: `❌ 답변 생성 중 오류가 발생했습니다: ${error.message}`,
-            timestamp: new Date().toISOString()
-        });
-    }
+    // 상태 저장
+    saveTabState();
 }
 
 // --- Tab Rendering (변경 없음) ---

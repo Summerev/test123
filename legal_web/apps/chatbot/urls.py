@@ -1,3 +1,5 @@
+#teamproject/legal_web/apps/chatbot/urls.py
+
 from django.urls import path
 from . import views
 

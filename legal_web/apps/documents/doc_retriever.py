@@ -1,4 +1,4 @@
-# teamproject/legal_web/apps/rag/retriever.py
+# teamproject/legal_web/apps/documents/doc_retriever.py
 
 import re
 import textwrap
