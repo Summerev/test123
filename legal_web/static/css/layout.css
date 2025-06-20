@@ -17,7 +17,7 @@ nav {
   justify-content: space-between;
   align-items: center;
   padding: 0 1rem;
-  min-height: 60px; /* 최소 높이 보장 */
+  min-height: 70px; /* 최소 높이 보장 */
   position: relative;
   background: white;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -40,20 +40,20 @@ nav {
 .nav-center-title {
   flex: 1;
   text-align: center;
-  max-width: 400px; /* 최대 너비 제한 */
-  margin: 0 20px; /* 좌우 여백 확보 */
+  max-width: 200px; /* 최대 너비 제한 */
+  margin: 0 15px; /* 좌우 여백 확보 */
 }
 
 .nav-center-title h2 {
   margin: 0;
-  font-size: 1.2em;
+  font-size: 1.1em;
   color: #2c3e50;
   white-space: nowrap; /* 줄바꿈 방지 */
 }
 
 .nav-center-title p {
   margin: 0;
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: #6c757d;
   white-space: nowrap; /* 줄바꿈 방지 */
 }
@@ -62,10 +62,9 @@ nav {
 .auth-buttons {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-shrink: 0; /* 절대 축소되지 않도록 */
-  min-width: 250px; /* 최소 너비 보장 */
-  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0; /* 절대 축소 금지 */
+  min-width: 300px; /* 안전한 최소 너비 설정 */
 }
 
 /* 언어 선택기 */
@@ -78,14 +77,13 @@ nav {
   background: white;
   border: 1px solid #dee2e6;
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 6px 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.9em;
+  gap: 4px;
+  font-size: 0.8em;
   white-space: nowrap;
-  min-width: 90px;
   transition: all 0.2s;
 }
 
@@ -95,7 +93,7 @@ nav {
 }
 
 .dropdown-icon {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   transition: transform 0.2s ease;
 }
 
@@ -133,7 +131,7 @@ nav {
 
 /* 로그인/회원가입 버튼 */
 .btn-login, .btn-signup, .btn-signout {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 6px;
   text-decoration: none;
   font-size: 0.9em;
@@ -181,6 +179,7 @@ nav {
   color: #495057;
   font-weight: 500;
   white-space: nowrap;
+  font-size: 0.8em;
 }
 
 .logo {
@@ -210,39 +209,11 @@ body.dark-mode .logo {
   font-weight: bold;
 }
 
-/* 🔥 반응형 디자인 - 겹침 완전 방지 */
-@media (max-width: 1024px) {
-  .nav-center-title {
-    max-width: 300px;
-    margin: 0 15px;
-  }
-  
-  .nav-center-title h2 {
-    font-size: 1.1em;
-  }
-  
-  .nav-center-title p {
-    font-size: 0.75em;
-  }
-  
-  .auth-buttons {
-    min-width: 220px;
-    gap: 10px;
-  }
-}
-
+/* 🔥 반응형 디자인 */
 @media (max-width: 768px) {
-  nav {
-    padding: 0 0.5rem;
-  }
-  
   .nav-center-title {
-    max-width: 200px;
-    margin: 0 10px;
-  }
-  
-  .nav-center-title h2 {
-    font-size: 1em;
+    max-width: 150px;
+    text-align: center;
   }
   
   .nav-center-title p {
@@ -250,46 +221,26 @@ body.dark-mode .logo {
   }
   
   .auth-buttons {
-    min-width: 180px;
-    gap: 8px;
+    gap: 6px;
   }
   
-  .language-btn {
-    padding: 6px 10px;
-    font-size: 0.8em;
-    min-width: 70px;
-  }
-  
-  .btn-login, .btn-signup, .btn-signout {
-    padding: 6px 12px;
-    font-size: 0.8em;
+  .language-btn, .btn-login, .btn-signup, .btn-signout {
+    padding: 4px 8px;
+    font-size: 0.75em;
   }
 }
 
 @media (max-width: 480px) {
   .nav-center-title {
-    max-width: 150px;
-    margin: 0 5px;
-  }
-  
-  .nav-center-title h2 {
-    font-size: 0.9em;
+    max-width: 100px;
   }
   
   .auth-buttons {
     flex-direction: column;
     gap: 4px;
-    min-width: 100px;
     align-items: flex-end;
   }
-  
-  .language-selector {
-    order: 2; /* 언어 선택기를 아래로 */
-  }
-  
-  .btn-login, .btn-signup {
-    order: 1; /* 로그인 버튼을 위로 */
-  }
+
 }
 
 /* 정보 버튼 그룹 스타일 개선 */
