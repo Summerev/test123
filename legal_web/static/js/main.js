@@ -32,7 +32,7 @@ import {
 import { createTab, renderTabBar, restoreTabs, } from './ui/chatTabUI.js'
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
-import { initFileUpload } from './ui/fileUpLoadUI.js';
+import { initFileUpload, showWelcomeMessage, forceResetWelcomeMessage } from './ui/fileUpLoadUI.js';
 
 
 

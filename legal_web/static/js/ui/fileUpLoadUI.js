@@ -380,7 +380,8 @@ export function initFileUpload() {
     browseFileButton = document.getElementById('browseFileButton');
     dropArea = document.getElementById('dropArea');
     welcomeMessageDiv = document.getElementById('welcomeMessage');
-    chatInputContainer = document.querySelector('.chat-input-container');
+    const chatInputContainer = document.querySelector('.chat-input-container');
+    //chatInputContainer = document.querySelector('.chat-input-container');
     fileNameDisplay = document.getElementById('fileNameDisplay');
     fileInfoMessage = document.querySelector('.file-upload-info');
 
