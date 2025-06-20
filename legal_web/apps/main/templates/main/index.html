@@ -1,10 +1,8 @@
 <!-- legal_web/apps/main/templates/main/index.html -->
+{% extends 'base.html' %}
 {% load static %}
 {% load i18n %}
-{% load crispy_forms_tags %}
 
-{% block head %}
-{% extends 'base.html' %}
 {% block title %}LegalBot - 법률 AI 어시스턴트{% endblock %}
 
 {% block content %}
@@ -18,4 +16,22 @@
   <!-- 우측 정보 패널 -->
   {% include "chatbot/components/info_panel.html" %}
 </div>
+
+<!-- 🔥 RAG 통합을 위한 추가 스크립트 -->
+<script>
+// 템플릿 변수를 JavaScript로 전달
+window.TEMPLATE_VARS = {
+    userAuthenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
+    userId: {% if user.is_authenticated %}'{{ user.id }}'{% else %}null{% endif %},
+    userName: {% if user.is_authenticated %}'{{ user.username }}'{% else %}null{% endif %},
+    mode: '{{ mode|default:"default" }}',
+    csrfToken: '{{ csrf_token }}'
+};
+
+// 사용자 인증 상태를 body에 표시 (RAG 시스템에서 사용)
+document.body.setAttribute('data-user-authenticated', window.TEMPLATE_VARS.userAuthenticated);
+if (window.TEMPLATE_VARS.userId) {
+    document.body.setAttribute('data-user-id', window.TEMPLATE_VARS.userId);
+}
+</script>
 {% endblock %}
