@@ -21,4 +21,13 @@ urlpatterns = [
     path('analysis/<uuid:document_id>/', views.analysis_detail, name='analysis_detail'),
     path('analysis/<uuid:document_id>/regenerate/', views.regenerate_analysis, name='regenerate_analysis'),
 
+    # API 키 테스트
+    path('api/test-key/', views.api_key_test, name='api_key_test'),
+    
+    # 대시보드 (추가하면 좋을 것)
+    path('dashboard/', views.dashboard, name='dashboard'),
+    
+    # 빠른 API들 (기존 chatbot 연동용)
+    path('api/quick-upload/', views.quick_upload_api, name='quick_upload_api'),
+    path('api/quick-chat/', views.quick_chat_api, name='quick_chat_api'),
 ]

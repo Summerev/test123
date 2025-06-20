@@ -520,3 +520,58 @@ class AnalysisService:
 • 분쟁 해결 절차를 미리 확인하세요
 
 구체적인 조항별 위험 분석을 위해 해당 조항을 직접 문의해 주세요."""
+
+    # rag/services/translator.py의 AnalysisService 클래스에 추가할 메소드들
+
+    def validate_risk_analysis_quality(self, analysis_text: str) -> bool:
+        """위험분석 품질 검증"""
+        quality_checks = {
+            'length': len(analysis_text) >= 500,  # 최소 길이
+            'structure': analysis_text.count('**') >= 8,  # 구조화 정도
+            'specificity': '조' in analysis_text or '항' in analysis_text,  # 조항 인용
+            'concreteness': any(word in analysis_text for word in ['구체적', '명시', '규정', '조항']),
+            'practical': any(word in analysis_text for word in ['주의', '확인', '검토', '대응'])
+        }
+
+        score = sum(quality_checks.values()) / len(quality_checks)
+        print(f"🔍 위험분석 품질 점수: {score:.1f} ({score*100:.0f}%)")
+
+        for check, passed in quality_checks.items():
+            print(f"   {check}: {'✅' if passed else '❌'}")
+
+        return score >= 0.7  # 70% 이상
+
+    def retry_enhanced_risk_analysis(self, text: str, risk_info: dict) -> str:
+        """위험분석 재시도 (더 구체적인 프롬프트)"""
+        print("🔄 더 구체적인 위험분석 재시도...")
+
+        enhanced_prompt = f"""이 계약서의 위험을 **매우 구체적으로** 분석하세요. 모호한 표현은 절대 사용하지 마세요.
+
+    {text[:7000]}
+
+    각 위험에 대해 다음 형식으로 **반드시** 답변하세요:
+
+    **1. 손해배상 위험:**
+    - 관련 조항: "제○조 ○○○○" (실제 조항 인용)
+    - 구체적 위험: ○○상황에서 ○○원 또는 ○○% 배상
+    - 발생 조건: ○○할 경우 또는 ○○하지 않을 경우
+    - 대응 방안: ○○를 사전에 확인하고 ○○해야 함
+
+    위 형식으로 5가지 위험을 모두 분석하세요. "위험이 있다", "주의가 필요하다" 같은 모호한 표현은 사용 금지입니다."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "계약서 위험분석 전문가. 반드시 구체적이고 실용적인 분석만 제공. 모호한 표현 절대 금지."},
+                    {"role": "user", "content": enhanced_prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.03
+            )
+
+            return response.choices[0].message.content.strip()
+
+        except Exception as e:
+            print(f"❌ 재시도도 실패: {e}")
+            return self._fallback_korean_risk_analysis(risk_info)

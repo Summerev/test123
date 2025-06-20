@@ -2,6 +2,7 @@
 import json
 import time
 import os
+import openai
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -13,12 +14,85 @@ from django.views import View
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.urls import reverse
+from django.conf import settings
 
 from .models import Document, DocumentChunk, ChatSession, ChatMessage, DocumentAnalysis
 from .services.document_processor import DocumentProcessor
 from .services.rag_engine import RAGEngine
 from .services.translator import AnalysisService, IMPROVED_LANGUAGES, TranslationService
 from .utils.file_handler import FileHandler
+
+# apps/rag/views.py 상단에 추가할 함수들
+
+def load_api_key():
+    """API 키 검증 함수 (Django 환경용)"""
+    try:
+        from django.conf import settings
+        import openai
+        
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        
+        if not api_key:
+            return "❌ settings.py에 OPENAI_API_KEY가 설정되지 않았습니다."
+        
+        if not api_key.startswith('sk-'):
+            return "❌ 올바르지 않은 API 키 형식입니다."
+        
+        # API 키 검증을 위한 테스트 호출
+        client = openai.OpenAI(api_key=api_key)
+        try:
+            client.chat.completions.create(
+                model="gpt-3.5-turbo", 
+                messages=[{"role": "user", "content": "test"}], 
+                max_tokens=1
+            )
+        except openai.AuthenticationError:
+            return "❌ 올바르지 않은 API 키입니다."
+        except Exception:
+            # 다른 오류는 API 키 자체는 유효하다고 판단
+            pass
+        
+        return "✅ API 키 검증 완료!"
+        
+    except Exception as e:
+        return f"❌ API 키 검증 실패: {str(e)}"
+
+def get_openai_client():
+    """OpenAI 클라이언트 가져오기"""
+    from django.conf import settings
+    import openai
+    
+    api_key = getattr(settings, 'OPENAI_API_KEY', None)
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다.")
+    
+    return openai.OpenAI(api_key=api_key)
+
+# API 키 로드용 뷰 추가
+@require_http_methods(["POST"])
+@login_required  
+@csrf_exempt
+def api_key_test(request):
+    """API 키 테스트"""
+    try:
+        result = load_api_key()
+        
+        if result.startswith("✅"):
+            return JsonResponse({
+                'success': True,
+                'message': result
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': result
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'API 키 테스트 중 오류: {str(e)}'
+        }, status=500)
 
 class DocumentUploadView(View):
     """문서 업로드 및 처리 뷰"""
@@ -32,7 +106,7 @@ class DocumentUploadView(View):
             'supported_languages': list(IMPROVED_LANGUAGES.keys())
     }
     
-        return render(request, 'rag/analysis_detail.html', context)
+        return render(request, 'rag/upload.html', context)
 
 @require_http_methods(["POST"])
 @login_required
@@ -230,8 +304,8 @@ def quick_chat_api(request):
 def _handle_general_chat(message, language):
     """일반 채팅 처리 (문서 없는 경우)"""
     try:
-        # OpenAI API 호출
-        analysis_service = AnalysisService()
+        # OpenAI 클라이언트 직접 사용
+        client = get_openai_client()
         
         system_prompts = {
             "한국어": "당신은 법률 전문 AI 어시스턴트입니다. 법률 관련 질문에 정확하고 이해하기 쉽게 답변해주세요.",
@@ -243,7 +317,7 @@ def _handle_general_chat(message, language):
         
         system_prompt = system_prompts.get(language, system_prompts["한국어"])
         
-        response = analysis_service.client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -268,8 +342,6 @@ def _handle_general_chat(message, language):
             'success': False,
             'error': f'일반 채팅 처리 중 오류: {str(e)}'
         }, status=500)
-        
-        return render(request, 'rag/upload.html', context)
     
     @method_decorator(login_required)
     @method_decorator(csrf_exempt)
@@ -687,4 +759,4 @@ def analysis_detail(request, document_id):
         'supported_languages': list(IMPROVED_LANGUAGES.keys())
     }
 
-    return render(request, 'rag/analysis_detail.html', context)
+    return render(request, 'rag/upload.html', context)
