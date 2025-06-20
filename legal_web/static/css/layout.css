@@ -17,12 +17,17 @@ nav {
   justify-content: space-between;
   align-items: center;
   padding: 0 1rem;
+  min-height: 60px; /* 최소 높이 보장 */
+  position: relative;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .nav-left {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0; /* 축소되지 않도록 */
 }
 
 .nav-center {
@@ -31,9 +36,151 @@ nav {
   gap: 0.5rem;
 }
 
+/* 🔥 중앙 타이틀 영역 - 공간 제한 */
+.nav-center-title {
+  flex: 1;
+  text-align: center;
+  max-width: 400px; /* 최대 너비 제한 */
+  margin: 0 20px; /* 좌우 여백 확보 */
+}
+
+.nav-center-title h2 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #2c3e50;
+  white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+.nav-center-title p {
+  margin: 0;
+  font-size: 0.8em;
+  color: #6c757d;
+  white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+/* 🔥 우측 인증 버튼 영역 - 핵심 수정 */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0; /* 절대 축소되지 않도록 */
+  min-width: 250px; /* 최소 너비 보장 */
+  justify-content: flex-end;
+}
+
+/* 언어 선택기 */
+.language-selector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.language-btn {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  white-space: nowrap;
+  min-width: 90px;
+  transition: all 0.2s;
+}
+
+.language-btn:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
 .dropdown-icon {
   font-size: 0.8rem;
   transition: transform 0.2s ease;
+}
+
+.language-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 120px;
+  z-index: 1000;
+  display: none;
+}
+
+.language-dropdown.show {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: #495057;
+  font-size: 0.9em;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+  color: #007bff;
+}
+
+/* 로그인/회원가입 버튼 */
+.btn-login, .btn-signup, .btn-signout {
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.btn-login {
+  background: white;
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-login:hover {
+  background: #007bff;
+  color: white;
+}
+
+.btn-signup {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.btn-signup:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-signout {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.btn-signout:hover {
+  background: #c82333;
+  border-color: #c82333;
+}
+
+.user-info {
+  color: #495057;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .logo {
@@ -61,6 +208,149 @@ body.dark-mode .logo {
   justify-content: center;
   color: var(--primary-accent-text);
   font-weight: bold;
+}
+
+/* 🔥 반응형 디자인 - 겹침 완전 방지 */
+@media (max-width: 1024px) {
+  .nav-center-title {
+    max-width: 300px;
+    margin: 0 15px;
+  }
+  
+  .nav-center-title h2 {
+    font-size: 1.1em;
+  }
+  
+  .nav-center-title p {
+    font-size: 0.75em;
+  }
+  
+  .auth-buttons {
+    min-width: 220px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  nav {
+    padding: 0 0.5rem;
+  }
+  
+  .nav-center-title {
+    max-width: 200px;
+    margin: 0 10px;
+  }
+  
+  .nav-center-title h2 {
+    font-size: 1em;
+  }
+  
+  .nav-center-title p {
+    display: none; /* 좁은 화면에서 부제목 숨김 */
+  }
+  
+  .auth-buttons {
+    min-width: 180px;
+    gap: 8px;
+  }
+  
+  .language-btn {
+    padding: 6px 10px;
+    font-size: 0.8em;
+    min-width: 70px;
+  }
+  
+  .btn-login, .btn-signup, .btn-signout {
+    padding: 6px 12px;
+    font-size: 0.8em;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-center-title {
+    max-width: 150px;
+    margin: 0 5px;
+  }
+  
+  .nav-center-title h2 {
+    font-size: 0.9em;
+  }
+  
+  .auth-buttons {
+    flex-direction: column;
+    gap: 4px;
+    min-width: 100px;
+    align-items: flex-end;
+  }
+  
+  .language-selector {
+    order: 2; /* 언어 선택기를 아래로 */
+  }
+  
+  .btn-login, .btn-signup {
+    order: 1; /* 로그인 버튼을 위로 */
+  }
+}
+
+/* 정보 버튼 그룹 스타일 개선 */
+.info-buttons-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.info-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.info-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* 로고 스타일 */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #2c3e50;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.logo-icon {
+  font-size: 1.3em;
+}
+
+/* 테마 토글 버튼 */
+.theme-toggle-btn {
+  background: none;
+  border: 1px solid #dee2e6;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.theme-icon {
+  font-size: 1.1em;
 }
 
 /* Main Container */
