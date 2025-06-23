@@ -475,7 +475,7 @@ async function uploadFileToServer(file, docType, sessionId) {
             formData.append('doc_type', docType);
             formData.append('session_id', sessionId);
 
-            // ★★★ translation.js의 함수를 사용하여 현재 언어 코드를 가져와 FormData에 추가 ★★★
+            // translation.js의 함수를 사용하여 현재 언어 코드를 가져와 FormData에 추가
             formData.append('language', getCurrentLanguage());
 
             const response = await fetch('/api/rag/analyze/', {

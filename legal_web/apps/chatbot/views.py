@@ -21,8 +21,9 @@ from django.contrib.auth.models import AnonymousUser
 import pickle
 import base64
 
-# RAG 서비스를 import
 from apps.rag import services as rag_services
+
+from .models import ChatMessage
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -37,60 +38,81 @@ def chat_policy(request):
 
 @csrf_exempt
 def chat_api(request):
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
+
+    try:
         data = json.loads(request.body)
-        user_message = data.get('message', '')
+        user_message_text = data.get('message', '')
         session_id = data.get('session_id')
+        doc_type = data.get('docType')
+        language = data.get('language', 'ko')
         chat_history = data.get('history', [])
-        
-        # 프론트엔드에서 doc_type을 보내줘야 함 (또는 세션에서 가져와야 함)
-        # 여기서는 JS가 보내준다고 가정
-        doc_type = data.get('docType') 
+        user = request.user # 현재 로그인한 사용자 정보
 
-        if not all([user_message, session_id]):
-            return JsonResponse({'error': '메시지와 세션 ID가 필요합니다.'}, status=400)
+        # 1. 사용자 메시지 저장
+        if isinstance(user, AnonymousUser):
+            # --- 비회원: 세션에 저장 ---
+            # 'chat_history_세션ID' 키로 세션에서 대화 목록 가져오기
+            session_chat_history = request.session.get(f'chat_history_{session_id}', [])
+            session_chat_history.append({'sender': 'user', 'message': user_message_text})
+            request.session[f'chat_history_{session_id}'] = session_chat_history
+        else:
+            # --- 회원: DB에 저장 ---
+            ChatMessage.objects.create(
+                session_id=session_id,
+                user=user,
+                sender='user',
+                message=user_message_text
+            )
 
-        # ★★★ 분기 로직 ★★★
+        # --- 서비스 호출 로직  ---
         if doc_type == 'terms':
-            # --- '약관' 세션일 경우: 새로운 RAG 질의응답 서비스 호출 ---
-            print("[RAG] '약관' 세션 질문에 답변합니다.")
-
-            faiss_data_from_session = None
-            if isinstance(request.user, AnonymousUser):
-                # 세션에서 비회원 데이터 로드
-                encoded_index_str = request.session.get(f'rag_index_b64_{session_id}')
+            faiss_data = None
+            if isinstance(user, AnonymousUser):
+                encoded_index = request.session.get(f'rag_index_b64_{session_id}')
                 chunks = request.session.get(f'rag_chunks_{session_id}')
-                if encoded_index_str and chunks:
-                    serialized_index = base64.b64decode(encoded_index_str.encode('utf-8'))
-                    faiss_index = pickle.loads(serialized_index)
-                    faiss_data_from_session = {'index': faiss_index, 'chunks': chunks}
+                if encoded_index and chunks:
+                    faiss_data = {'index': pickle.loads(base64.b64decode(encoded_index)), 'chunks': chunks}
                 else:
                     return JsonResponse({'error': '분석된 약관 정보가 없습니다. 파일을 다시 업로드해주세요.'}, status=400)
-
-            answer_result = rag_services.get_answer(
-                user=request.user,
-                session_id=session_id,
-                question=user_message,
-                faiss_data=faiss_data_from_session,
-                chat_history=chat_history
+            
+            result = rag_services.get_answer(
+                user=user, session_id=session_id, question=user_message_text,
+                language=language, faiss_data=faiss_data, chat_history=chat_history
             )
-            
-            if not answer_result.get('success'):
-                return JsonResponse({'error': answer_result.get('error', '답변 생성 오류')}, status=500)
-            
-            return JsonResponse({'reply': answer_result.get('answer')})
-
         else:
-            # --- '계약서' 등 다른 유형일 경우: 기존 OpenAI 호출 로직 ---
-            print("[기존] 일반 채팅으로 답변합니다.")
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": user_message}]
+            result = {'success': True, 'answer': f"'{doc_type}'에 대한 질문은 아직 지원되지 않습니다."}
+
+        # --- 결과 처리 및 봇 답변 저장 ---
+        if not result.get('success'):
+            return JsonResponse({'error': result.get('error', '답변 생성 오류')}, status=500)
+
+        bot_answer_text = result.get('answer')
+        
+        # 2. 봇 답변 저장
+        if isinstance(user, AnonymousUser):
+            # --- 비회원: 세션에 저장 ---
+            session_chat_history = request.session.get(f'chat_history_{session_id}', [])
+            session_chat_history.append({'sender': 'bot', 'message': bot_answer_text})
+            request.session[f'chat_history_{session_id}'] = session_chat_history
+        else:
+            # --- 회원: DB에 저장 ---
+            ChatMessage.objects.create(
+                session_id=session_id,
+                user=user,
+                sender='bot',
+                message=bot_answer_text
             )
-            reply = response.choices[0].message.content.strip()
-            return JsonResponse({'reply': reply})
             
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+        request.session.modified = True
+            
+        return JsonResponse({'reply': bot_answer_text})
+
+    except Exception as e:
+        print(f"[ERROR] chat_api: {e}")
+        return JsonResponse({'error': '서버 내부 오류가 발생했습니다.'}, status=500)
 
 
 @csrf_exempt
@@ -105,7 +127,7 @@ def upload_file(request):
     if not all([doc_type, session_id]):
         return JsonResponse({'error': '문서 유형과 세션 ID가 필요합니다.'}, status=400)
 
-    # ★★★ 'ext' 변수를 여기서 먼저 정의합니다 ★★★
+    # 'ext' 변수를 정의
     filename = uploaded_file.name
     ext = os.path.splitext(filename)[1].lower().lstrip('.')
     print(f"▶ upload_file: filename={filename}, ext={ext}, doc_type={doc_type}")

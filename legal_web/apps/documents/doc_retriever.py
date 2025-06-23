@@ -17,9 +17,7 @@ import uuid
 
 # --- 파일에서 텍스트 추출 ---
 def get_document_text(uploaded_file):
-    """
-    Django의 UploadedFile 객체를 받아 파일 형식에 맞게 텍스트를 추출합니다.
-    """
+
     filename = uploaded_file.name
     ext = filename.split('.')[-1].lower()
     text = ""
@@ -36,7 +34,6 @@ def get_document_text(uploaded_file):
         else:
             raise ValueError(f"지원하지 않는 파일 형식입니다: {ext}")
     except Exception as e:
-        # 실제 운영에서는 로깅을 하는 것이 좋습니다.
         print(f"Error reading file {filename}: {e}")
         raise ValueError(f"파일 처리 중 오류가 발생했습니다: {e}")
 

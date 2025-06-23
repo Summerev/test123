@@ -137,7 +137,7 @@ async function processUserMessage(text, tabId) {
                 docType: openTabs[tabId]?.docType || 'terms', 
                 // 이전 대화 기록 전달 (마지막 사용자 메시지는 제외)
                 history: (chatSessions[tabId] || []).slice(0, -1), 
-                // ★★★ 현재 선택된 언어 코드 전달 ★★★
+                //현재 선택된 언어 코드 전달
                 language: getCurrentLanguage() 
             })
         });

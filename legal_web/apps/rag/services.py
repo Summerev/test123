@@ -33,7 +33,7 @@ def _translate_text(text: str, target_lang_name: str) -> str:
 
 
 
-# ★ 질의응답 서비스 함수 ★
+# 질의응답 서비스 함수 
 def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_history=[]):
     """
     사용자 유형에 따라 검색하고, 선택된 언어에 맞춰 답변을 생성/번역합니다.
