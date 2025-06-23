@@ -135,9 +135,11 @@ async function handleFile(file) {
 
             // 성공 메시지 생성
             const successMessage = {
-                id: uploadingMessage.id, // 같은 ID 사용하여 교체
+                id: uploadingMessage.id,
                 sender: 'bot',
-                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n${uploadResult.text ? '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!' : '💬 이 문서에 대해 질문해보세요!'}`,
+                // uploadResult.text (요약문)가 있으면, 그 내용을 직접 메시지에 포함시킵니다.
+                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n` + 
+                    `${uploadResult.text ? uploadResult.text : '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!'}`,
                 timestamp: new Date().toISOString()
             };
             

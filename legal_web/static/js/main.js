@@ -118,9 +118,8 @@ export function handleSendMessage() {
 
 
 async function processUserMessage(text, tabId) {
-    // 1. "AI가 답변 중..." 이라는 임시 메시지를 UI에 먼저 표시
-    const thinkingMessageId = generateMessageId();
-    addMessageToUI('AI가 답변을 생성 중입니다...', 'bot', thinkingMessageId, new Date().toISOString(), false, true);
+    // 1. "AI가 답변 중..." 임시 메시지 표시
+    const thinkingMessageElement = addMessageToUI('AI가 답변을 생성 중입니다...', 'bot', generateMessageId(), new Date().toISOString(), false, true);
 
     try {
         // 2. 백엔드 API 호출
@@ -133,69 +132,57 @@ async function processUserMessage(text, tabId) {
             body: JSON.stringify({
                 message: text,
                 session_id: tabId,
-                // 현재 탭의 문서 유형 가져오기 (openTabs에 저장된 정보 활용)
                 docType: openTabs[tabId]?.docType || 'terms', 
-                // 이전 대화 기록 전달 (마지막 사용자 메시지는 제외)
                 history: (chatSessions[tabId] || []).slice(0, -1), 
-                //현재 선택된 언어 코드 전달
                 language: getCurrentLanguage() 
             })
         });
-        
-        // 3. 응답 처리
-        const thinkingMessageElement = document.getElementById(thinkingMessageId);
+
+      // 3. 응답을 받으면, 저장해둔 임시 메시지 요소를 바로 삭제합니다.
+        //    이제 getElementById로 찾을 필요가 없습니다.
+        if (thinkingMessageElement) {
+            thinkingMessageElement.remove();
+        }
+
+        // 4. 응답 상태에 따른 처리
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ reply: '서버에서 오류가 발생했습니다.' }));
-            // 임시 메시지를 에러 메시지로 교체
-            if (thinkingMessageElement) {
-                const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
-                if (messageBubble) {
-                    messageBubble.textContent = `❌ 오류: ${errorData.error || errorData.reply}`;
-                    thinkingMessageElement.classList.remove('is-temporary');
-                }
-            }
-            return; // 에러 발생 시 함수 종료
+            const errorData = await response.json().catch(() => ({ error: '서버로부터 응답을 받지 못했습니다.' }));
+            // 에러 메시지를 새로 추가
+            addMessageToUI(`❌ 오류: ${errorData.error || '알 수 없는 오류'}`, 'bot', generateMessageId(), new Date().toISOString());
+            return; // 함수 종료
         }
 
         const data = await response.json();
         const botReply = data.reply;
 
-        // 4. 실제 AI 답변으로 UI 업데이트
+        // 5. 실제 AI 답변을 새로운 메시지로 화면에 추가
         const botMsg = {
-            id: thinkingMessageId, // 임시 메시지와 같은 ID를 사용하여 교체
+            id: generateMessageId(), // 새로운 메시지이므로 새 ID 생성
             sender: 'bot',
             text: botReply,
             timestamp: new Date().toISOString()
         };
         
-        // 임시 메시지 내용을 실제 답변으로 업데이트
-        if (thinkingMessageElement) {
-            const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
-            if (messageBubble) {
-                // innerHTML을 사용하여 줄바꿈(\n)을 <br>로 렌더링
-                messageBubble.innerHTML = botReply.replace(/\n/g, '<br>');
-                thinkingMessageElement.classList.remove('is-temporary');
-            }
-        }
+        // UI에 새 메시지 추가
+        addMessageToUI(botMsg.text, botMsg.sender, botMsg.id, botMsg.timestamp);
         
-        // 5. 세션 기록에 실제 봇 답변 저장
-        // (임시 메시지는 세션에 저장하지 않았으므로, 여기서 추가)
+        // 6. 세션 데이터(localStorage)에 실제 답변 저장
         chatSessions[tabId].push(botMsg);
         saveTabState();
 
     } catch (error) {
-        // 네트워크 오류 등 fetch 자체의 실패
-        console.error('Error processing user message:', error);
+        // 7. 네트워크 오류 등 fetch 자체의 실패 처리
+        // catch 블록에 오기 전에 임시 메시지를 찾아서 삭제 시도
         const thinkingMessageElement = document.getElementById(thinkingMessageId);
         if (thinkingMessageElement) {
-             const messageBubble = thinkingMessageElement.querySelector('.message-bubble');
-             if (messageBubble) {
-                messageBubble.textContent = `❌ 네트워크 오류: ${error.message}`;
-                thinkingMessageElement.classList.remove('is-temporary');
-             }
+            thinkingMessageElement.remove();
         }
+        addMessageToUI(`❌ 네트워크 오류: ${error.message}`, 'bot', generateMessageId(), new Date().toISOString());
+        console.error('Error processing user message:', error);
     }
 }
+
+
 
 // --- Tab Rendering (변경 없음) ---
 

@@ -1,5 +1,6 @@
 # teamproject/legal_web/apps/chatbot/models.py
 
+'''
 from django.db import models
 from django.conf import settings 
 
@@ -36,3 +37,4 @@ class ChatMessage(models.Model):
     class Meta:
         # DB에서 데이터를 조회할 때 기본 정렬 순서 (오래된 메시지부터)
         ordering = ['timestamp']
+'''

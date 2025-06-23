@@ -23,7 +23,7 @@ import base64
 
 from apps.rag import services as rag_services
 
-from .models import ChatMessage
+#from .models import ChatMessage
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -38,6 +38,10 @@ def chat_policy(request):
 
 @csrf_exempt
 def chat_api(request):
+    """
+    사용자의 채팅 메시지를 받아 RAG 서비스를 호출하고 답변을 반환합니다.
+    (대화 기록 저장 로직이 없는 원래 버전)
+    """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST 요청만 허용됩니다.'}, status=405)
 
@@ -48,26 +52,14 @@ def chat_api(request):
         doc_type = data.get('docType')
         language = data.get('language', 'ko')
         chat_history = data.get('history', [])
-        user = request.user # 현재 로그인한 사용자 정보
+        user = request.user
 
-        # 1. 사용자 메시지 저장
-        if isinstance(user, AnonymousUser):
-            # --- 비회원: 세션에 저장 ---
-            # 'chat_history_세션ID' 키로 세션에서 대화 목록 가져오기
-            session_chat_history = request.session.get(f'chat_history_{session_id}', [])
-            session_chat_history.append({'sender': 'user', 'message': user_message_text})
-            request.session[f'chat_history_{session_id}'] = session_chat_history
-        else:
-            # --- 회원: DB에 저장 ---
-            ChatMessage.objects.create(
-                session_id=session_id,
-                user=user,
-                sender='user',
-                message=user_message_text
-            )
+        if not all([user_message_text, session_id, doc_type]):
+            return JsonResponse({'error': '메시지, 세션 ID, 문서 유형이 모두 필요합니다.'}, status=400)
 
-        # --- 서비스 호출 로직  ---
+        # --- 서비스 호출 로직 (원래 이 부분만 있었습니다) ---
         if doc_type == 'terms':
+            print(f"[RAG] '약관' 질문 처리 시작 (세션: {session_id})")
             faiss_data = None
             if isinstance(user, AnonymousUser):
                 encoded_index = request.session.get(f'rag_index_b64_{session_id}')
@@ -78,36 +70,22 @@ def chat_api(request):
                     return JsonResponse({'error': '분석된 약관 정보가 없습니다. 파일을 다시 업로드해주세요.'}, status=400)
             
             result = rag_services.get_answer(
-                user=user, session_id=session_id, question=user_message_text,
-                language=language, faiss_data=faiss_data, chat_history=chat_history
+                user=user,
+                session_id=session_id,
+                question=user_message_text,
+                language=language,
+                faiss_data=faiss_data,
+                chat_history=chat_history
             )
         else:
+            print(f"[기존] '{doc_type}' 질문 처리 시작")
             result = {'success': True, 'answer': f"'{doc_type}'에 대한 질문은 아직 지원되지 않습니다."}
 
-        # --- 결과 처리 및 봇 답변 저장 ---
+        # --- 결과 처리 로직 (원래 이 부분만 있었습니다) ---
         if not result.get('success'):
             return JsonResponse({'error': result.get('error', '답변 생성 오류')}, status=500)
 
         bot_answer_text = result.get('answer')
-        
-        # 2. 봇 답변 저장
-        if isinstance(user, AnonymousUser):
-            # --- 비회원: 세션에 저장 ---
-            session_chat_history = request.session.get(f'chat_history_{session_id}', [])
-            session_chat_history.append({'sender': 'bot', 'message': bot_answer_text})
-            request.session[f'chat_history_{session_id}'] = session_chat_history
-        else:
-            # --- 회원: DB에 저장 ---
-            ChatMessage.objects.create(
-                session_id=session_id,
-                user=user,
-                sender='bot',
-                message=bot_answer_text
-            )
-            
-    
-        request.session.modified = True
-            
         return JsonResponse({'reply': bot_answer_text})
 
     except Exception as e:

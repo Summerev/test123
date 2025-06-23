@@ -48,7 +48,7 @@ def analyze_document_view(request):
             request.session[f'rag_chunks_{session_id}'] = chunks
             print(f"비회원 분석 완료. FAISS 데이터를 세션에 저장함 (세션키 접미사: {session_id})")
 
-    # 3. 프론트엔드에 요약문 반환
+    # 3. 요약문 반환
     return JsonResponse({
         'summary': analysis_result.get('summary')
     })
