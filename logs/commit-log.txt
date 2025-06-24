@@ -187,3 +187,9 @@ Author: grozovoi10
 Message: 함수명 변경
 Commit: 1cc4c9059202dd09e75df0eb69407c8833373afc
 
+==== New Push ====
+Time: 2025-06-24 06:45:59
+Author: grozovoi10
+Message: Merge branch 'main' of https://github.com/PROJECTLAW5/teamproject
+Commit: 975ba5cd2c2c811d221008a3394c7efcc08ad6a7
+
