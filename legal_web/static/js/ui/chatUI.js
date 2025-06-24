@@ -11,7 +11,7 @@ import {
 } from '../data/chatHistoryManager.js';
 
 import { generateSessionId } from '../main.js';
-import { createTab, renderTabBar, switchTab } from './chatTabUI.js'
+import { createTab, renderTabBar, switchTab, updateTabTitle } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
 import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
@@ -456,11 +456,11 @@ function handleRename(id, oldTitle) {
     const newTitle = prompt('새 이름 입력', oldTitle);
     if (newTitle) {
         // 1) 타이틀 저장소에 반영
-        saveChatSessionInfo(id, newTitle);
+        saveChatSessionInfo(id, { titleText: newTitle });
         // 2) 사이드바 목록 갱신
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
-        updateTabTitle(id, newTitle); // updateTabTitle 함수가 정의되어 있지 않습니다. 이 함수도 추가해야 할 수 있습니다.
+        updateTabTitle(id, newTitle);
     }
 }
 
