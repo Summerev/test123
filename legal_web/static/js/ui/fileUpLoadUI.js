@@ -21,9 +21,6 @@ let dropArea;
 let fileInfoMessage;
 let chatInputContainer;
 
-
-
-
 /**
  * 드래그 앤 드롭 영역의 활성화/비활성화 상태를 설정합니다.
  * @param {boolean} isEnabled 
