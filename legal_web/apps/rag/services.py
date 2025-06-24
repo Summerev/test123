@@ -7,6 +7,8 @@ from django.contrib.auth.models import AnonymousUser
 from apps.documents import doc_retriever
 from . import prompt_manager
 
+import re
+
 
 print("--- rag/services.py: Module imported ---")
 
@@ -44,38 +46,48 @@ def _translate_text(text: str, target_lang_name: str) -> str:
 
 
 # 질의응답 서비스 함수 
+# ★★★★★ 이 함수를 아래의 '단순한 RAG 버전'으로 교체해주세요 ★★★★★
 def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_history=[]):
     """
-    사용자 유형에 따라 검색하고, 선택된 언어에 맞춰 답변을 생성/번역합니다.
+    (단순화된 버전) 사용자 유형에 따라 검색하고 답변을 생성/번역합니다.
     """
     try:
-        # --- 1. 한국어 문서 DB에서 컨텍스트 검색 ---
-        print(f"Searching context for question: '{question}'")
+        print(f"[RAG 시작] 질문: '{question}'")
+        # --- 1. 컨텍스트 검색 ---
+        top_k = 5 # 기본 검색 결과 수를 3~5개로 설정
+
         if isinstance(user, AnonymousUser):
             if not faiss_data or 'index' not in faiss_data or 'chunks' not in faiss_data:
-                return {"success": False, "error": "분석된 문서 정보가 만료되었습니다. 파일을 다시 업로드해주세요."}
-            relevant_chunks = doc_retriever.search_faiss_index(faiss_data['index'], faiss_data['chunks'], client, question)
+                return {"success": False, "error": "분석된 문서 정보가 만료되었습니다."}
+            
+            relevant_chunks = doc_retriever.search_faiss_index(
+                index=faiss_data['index'],
+                chunks=faiss_data['chunks'],
+                client=client,
+                query=question, # ★ 원래 질문을 그대로 검색에 사용
+                top_k=top_k
+            )
         else:
-            relevant_chunks = doc_retriever.search_qdrant(qdrant_client, client, question, user.id, session_id)
+            relevant_chunks = doc_retriever.search_qdrant(
+                client=qdrant_client,
+                embedding_client=client,
+                query=question, # ★ 원래 질문을 그대로 검색에 사용
+                user_id=user.id,
+                session_id=session_id,
+                top_k=top_k
+            )
 
         if not relevant_chunks:
-            # 검색 결과가 없을 때의 처리 (간단한 다국어 처리)
-            no_context_answer = {
-                'ko': "죄송합니다. 현재 문서 내용에서 질문과 관련된 정보를 찾을 수 없습니다.",
-                'en': "Sorry, I couldn't find relevant information in the document for your question.",
-                'ja': "申し訳ありませんが、文書内で質問に関連する情報を見つけることができませんでした。",
-                'zh': "抱歉，在文档中未能找到与您问题相关的信息。",
-                'es': "Lo siento, no pude encontrar información relevante en el documento para su pregunta."
-            }
-            return {"success": True, "answer": no_context_answer.get(language, no_context_answer['ko'])}
+            print("[RAG 결과] 관련성 높은 문서를 찾지 못했습니다.")
+            return {"success": True, "answer": "죄송합니다. 문서에서 질문과 관련된 정보를 찾을 수 없습니다."}
 
-        context = "\n\n".join(relevant_chunks)
+        print(f"[RAG 결과] {len(relevant_chunks)}개의 관련성 높은 문서를 찾았습니다.")
+        context = "\n\n---\n\n".join(relevant_chunks)
 
-        # --- 2. 한국어로 답변 생성 ---
-        print("Generating answer in Korean with OpenAI...")
+        # --- 2. 답변 생성 ---
         korean_prompt = prompt_manager.get_answer_prompt(context, question)
         
-        messages = [{"role": "system", "content": "You are a helpful legal AI assistant. Answer based on the provided context."}]
+        messages = [{"role": "system", "content": "You are a helpful legal AI assistant."}]
         for entry in chat_history:
             role = "user" if entry.get("sender") == "user" else "assistant"
             messages.append({"role": role, "content": entry.get("text")})
@@ -84,28 +96,20 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
         response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages, max_tokens=700, temperature=0.5)
         answer_ko = response.choices[0].message.content
 
-        # --- 3. 선택된 언어로 답변 번역 ---
+        # --- 3. 번역 ---
+        final_answer = answer_ko
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
-
         if language in lang_map:
             target_lang_name = lang_map[language]
-            print(f"Translating answer to {target_lang_name}...")
             final_answer = _translate_text(answer_ko, target_lang_name)
-        else: # 한국어
-            final_answer = answer_ko
-        print("--- rag/services.py: try block finished, returning success ---")
+        
         return {"success": True, "answer": final_answer}
 
-
     except APIError as e:
-            error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
-            if e.code == 'insufficient_quota':
-                error_message = "AI 서비스 사용 한도를 초과하여 답변을 생성할 수 없습니다."
-            
-            print(f"[ERROR] OpenAI API Error in get_answer: {e}")
-            # 서버가 죽는 대신, 정상적인 JSON 에러 응답을 반환합니다.
-            return {"success": False, "error": error_message}
-        
+        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
+        if e.code == 'insufficient_quota':
+            error_message = "AI 서비스 사용 한도를 초과하여 답변을 생성할 수 없습니다."
+        return {"success": False, "error": error_message}
+    
     except Exception as e:
-        print(f"[ERROR] Unexpected error in get_answer: {e}")
         return {"success": False, "error": f"답변 생성 중 오류가 발생했습니다: {e}"}

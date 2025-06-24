@@ -31,7 +31,11 @@ def analyze_document_view(request):
     )
 
     if not analysis_result.get('success'):
-        return JsonResponse({'error': analysis_result.get('error', '분석 중 오류 발생')}, status=500)
+        status_code = analysis_result.get('status_code', 500)
+        return JsonResponse(
+            {'error': analysis_result.get('error', '분석 중 오류 발생')}, 
+            status=status_code
+        )
 
     # 2. 비회원인 경우에만 FAISS 인덱스를 세션에 저장
     storage_data = analysis_result.get('storage_data', {})
