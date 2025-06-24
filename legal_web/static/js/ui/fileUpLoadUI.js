@@ -100,7 +100,7 @@ async function handleFile(file) {
     const uploadingMessage = {
         id: 'upload-' + Date.now(),
         sender: 'bot',
-        text: `파일 '${fileName}' 업로드 중...`,
+        text: `파일 '${fileName}' 업로드 중 입니다.`,
         timestamp: new Date().toISOString()
     };
     
@@ -466,71 +466,29 @@ export function initFileUpload() {
  * @returns {Promise<Object>} 서버 응답 결과 객체
  */
 async function uploadFileToServer(file, docType, sessionId) {
-    if (docType === 'terms') {
-        // --- '약관' 유형일 경우: 새로운 RAG API 호출 ---
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('doc_type', docType);
-            formData.append('session_id', sessionId);
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('doc_type', docType);
+        formData.append('session_id', sessionId);
+        formData.append('language', getCurrentLanguage());
 
-            // translation.js의 함수를 사용하여 현재 언어 코드를 가져와 FormData에 추가
-            formData.append('language', getCurrentLanguage());
+        // 모든 문서 유형을 통합된 엔드포인트로 처리
+        const response = await fetch('/api/documents/analyze/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData,
+        });
 
-            const response = await fetch('/api/rag/analyze/', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }, // 여기서 사용
-                body: formData,
-            });
+        const data = await response.json();
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                return { success: false, error: data.error || `서버 오류 (${response.status})` };
-            } else {
-                // 성공 시, 'text' 키에 요약문을 담아 handleFile 함수로 반환
-                return { success: true, text: data.summary, message: "분석이 완료되었습니다." };
-            }
-        } catch (error) {
-            console.error('[RAG] 약관 분석 중 네트워크 오류:', error);
-            return { success: false, error: `네트워크 오류: ${error.message}` };
+        if (!response.ok) {
+            return { success: false, error: data.error || `서버 오류 (${response.status})` };
+        } else {
+            return { success: true, text: data.summary || data.text, message: data.message || "분석이 완료되었습니다." };
         }
-
-    } else {
-        // --- '계약서' 등 다른 유형일 경우: 기존 API 호출 ---
-        try {
-            console.log("[기존] '계약서' 유형으로 /chatbot/upload-file/ API를 호출합니다.");
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            // 기존 API는 doc_type, session_id를 받지 않으므로 보내지 않음
-
-            const response = await fetch('/chatbot/upload-file/', {
-                method: 'POST',
-                body: formData
-                // CSRF 토큰이 필요하다면 여기에 추가: headers: { 'X-CSRFToken': getCookie('csrftoken') }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                return { 
-                    success: true, 
-                    text: data.text || '', 
-                    message: data.message || '파일 업로드가 완료되었습니다.' 
-                };
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                return { 
-                    success: false, 
-                    error: errorData.error || `서버 오류 (${response.status}): ${response.statusText}` 
-                };
-            }
-        } catch (error) {
-            console.error('파일 업로드 중 네트워크 오류:', error);
-            return { 
-                success: false, 
-                error: `네트워크 오류: ${error.message}` 
-            };
-        }
+    } catch (error) {
+        console.error('파일 업로드 중 네트워크 오류:', error);
+        return { success: false, error: `네트워크 오류: ${error.message}` };
     }
 }
