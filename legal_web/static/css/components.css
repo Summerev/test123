@@ -4,7 +4,7 @@
   background: none;
   border: 1px solid var(--border-color);
   color: var(--icon-color);
-  padding: 0.5rem 0.75rem;
+  padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 1rem;
@@ -88,22 +88,29 @@
   border-bottom: none;
 }
 
-
 .btn-login {
-  color: var(--text-color);
+  color: #1a202c;
+  /* 어두운 텍스트 */
   text-decoration: none;
   font-weight: 500;
-  padding: 0.5rem 1rem;
+  padding: 12px 30px;
   border-radius: 6px;
   transition: all 0.2s ease;
-  background: none;
-  border: none;
+  background: #c2daf2;
+  border: 1px solid #a5b4fc;
   cursor: pointer;
 }
 
 .btn-login:hover {
-  background: var(--button-hover-bg);
-  color: var(--button-hover-text);
+  background: #c2daf2;
+  color: #0f172a;
+}
+
+
+.btn-signup {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #2563eb;
 }
 
 .btn-signup,
@@ -117,6 +124,7 @@
   transition: all 0.2s ease;
   border: none;
   cursor: pointer;
+  min-width: 100px;
 }
 
 .btn-signup:hover,
@@ -530,4 +538,28 @@ body.dark-mode .mode-options-sidebar input[type='radio']:checked+label {
 
 .delete-confirm-modal .btn-confirm.danger:hover {
   background: #d32f2f;
+}
+
+/* 🌙 다크모드 언어 선택 버튼 */
+body.dark-mode .language-btn {
+  background: #374151;
+  color: #e5e7eb;
+  border: 1px solid #4b5563;
+}
+
+body.dark-mode .language-btn:hover {
+  background: #4b5563;
+  color: #ffffff;
+}
+
+/* 🌙 다크모드 회원가입 버튼 */
+body.dark-mode .btn-signup {
+  background: #4b5563;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+}
+
+body.dark-mode .btn-signup:hover {
+  background: #4b5563;
+  color: #ffffff;
 }

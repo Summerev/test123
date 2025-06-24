@@ -7,7 +7,7 @@
     border-radius: 12px;
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    height: calc(100vh - 130px);
+    height: 100%;
     overflow-x: hidden;
 }
 
@@ -46,16 +46,16 @@
 
 /* Chat Messages & Bubbles Start */
 .chat-messages {
-    flex: 1;
+    height: calc(100vh - 130px - 100px + 200px);
+    /* 화면 전체 높이 - nav/padding - input 영역 */
     padding: 1rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     justify-content: center;
-    /* 세로 중앙 정렬 (메시지가 적을 때) */
+    /* 메시지가 적을 때 중앙 정렬 */
     align-items: center;
-    /* 가로 중앙 정렬 */
 }
 
 .chat-message {
@@ -443,8 +443,10 @@ body.dark-mode .send-button:disabled {
     box-sizing: border-box;
     border-radius: 0.75rem 0.75rem 0 0;
     scrollbar-width: thin;
-    height: auto;
-    min-height: 40px;
+
+    /* ✅ 고정 높이 */
+    height: 53px;
+    min-height: 53px;
 }
 
 .container {
