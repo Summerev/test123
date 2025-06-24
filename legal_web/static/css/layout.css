@@ -138,12 +138,6 @@ nav {
   color: white;
 }
 
-.btn-signup {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
 .btn-signup:hover {
   background: #0056b3;
   border-color: #0056b3;
@@ -198,35 +192,28 @@ body.dark-mode .logo {
 /* 정보 버튼 그룹 스타일 개선 */
 .info-buttons-group {
   display: flex;
-  gap: 4px;
-  align-items: center;
+  gap: 10px;
 }
 
 .info-btn {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.8em;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.info-btn:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-}
-
-/* 로고 스타일 */
-.logo {
+  font-size: 16px;
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  border-radius: 8px;
+  color: #2d3748;
   display: flex;
   align-items: center;
   gap: 8px;
-  text-decoration: none;
-  color: #2c3e50;
-  font-weight: bold;
-  font-size: 1.1em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.info-btn:hover {
+  background-color: #f9fafb;
+  border-color: #4299e1;
+  color: #1a202c;
 }
 
 .logo-icon {
@@ -238,8 +225,8 @@ body.dark-mode .logo {
   background: none;
   border: 1px solid #dee2e6;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -698,12 +685,13 @@ body.dark-mode .mode-options-sidebar label:hover {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
+  padding: 12px 24px;
   border: 1px solid #ccc;
   border-radius: 6px;
-  background: white;
+  background: #63B3ED;
   font-size: 14px;
   cursor: pointer;
+  margin-top: 6px;
 }
 
 .nav-right>.language-selector {
@@ -732,4 +720,93 @@ body.dark-mode .mode-options-sidebar label:hover {
   /* 배경색 유지하거나 변경 가능 */
   border-left: 1px solid #ddd;
   padding: 16px;
+}
+
+/* ============================
+   🌙 다크모드 전용 스타일
+   ============================ */
+
+body.dark-mode nav {
+  background: var(--header-bg);
+}
+
+body.dark-mode .info-btn {
+  background-color: #3a3f4b;
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
+body.dark-mode .info-btn:hover {
+  background-color: #4a5568;
+  color: #ffffff;
+}
+
+body.dark-mode .btn-login {
+  background: transparent;
+  color: var(--primary-accent);
+  border-color: var(--primary-accent);
+}
+
+body.dark-mode .btn-signup {
+  background: var(--primary-accent);
+  color: white;
+}
+
+body.dark-mode .logo {
+  color: var(--primary-accent);
+}
+
+body.dark-mode .theme-toggle-btn {
+  border-color: #718096;
+}
+
+body.dark-mode .tab-bar {
+  background-color: #2d3748;
+  border-bottom: 1px solid #4a5568;
+}
+
+body.dark-mode .chat-tab {
+  background-color: #3a3f4b;
+  color: #e2e8f0;
+}
+
+body.dark-mode .chat-tab.active {
+  background-color: #4a5568;
+  color: #ffffff;
+}
+
+/* 입력창 컨테이너 */
+body.dark-mode .chat-input-container {
+  background: #1a202c;
+  border-top: 1px solid #2d3748;
+  box-shadow: none;
+}
+
+body.dark-mode .chat-input {
+  background: #2d3748;
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
+body.dark-mode .chat-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+
+body.dark-mode .language-btn {
+  color: #ffffff;
+}
+
+body.dark-mode .language-dropdown {
+  background-color: #1a202c;
+  border: 1px solid #4a5568;
+}
+
+body.dark-mode .dropdown-item {
+  color: #e2e8f0;
+}
+
+body.dark-mode .dropdown-item:hover {
+  background-color: #4a5568;
 }
