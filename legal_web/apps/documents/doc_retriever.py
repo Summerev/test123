@@ -67,6 +67,13 @@ def split_text_into_chunks_terms(text: str, max_tokens=1500):
 def get_embeddings(client, texts: list[str]): 
     """
     OpenAI 임베딩 API를 호출하여 텍스트 목록에 대한 벡터를 가져옵니다.
+    
+    Args:
+        client: OpenAI 클라이언트
+        texts: 벡터화할 텍스트 리스트
+        
+    Returns:
+        list: 각 텍스트에 대응하는 벡터 리스트
     """
     print(f"🔄 get_embeddings 함수 시작: {len(texts)}개 텍스트")
     
@@ -104,9 +111,16 @@ def get_qdrant_client():
         print(f"❌ get_qdrant_client 함수 오류 발생: {e}")
         raise
 
-def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], embedding_client, user_id: int, session_id: str):
+def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], vectors: list, user_id: int, session_id: str):
     """
-    문서 조각과 메타데이터를 Qdrant에 저장(upsert)합니다.
+    문서 조각과 벡터를 Qdrant에 저장(upsert)합니다. (순수 저장 로직만 담당)
+    
+    Args:
+        client: Qdrant 클라이언트
+        chunks: 텍스트 조각 리스트
+        vectors: 미리 계산된 벡터 리스트
+        user_id: 사용자 ID
+        session_id: 세션 ID
     """
     print(f"🔄 upsert_document_to_qdrant 함수 시작: user_id={user_id}, session_id={session_id}, chunks={len(chunks)}개")
 
@@ -115,13 +129,16 @@ def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], embedding
         print("🏁 upsert_document_to_qdrant 함수 종료: 청크 없음")
         return
 
-    collection_name = "legal_documents" # 모든 문서를 하나의 컬렉션에 저장
+    if len(chunks) != len(vectors):
+        raise ValueError(f"청크 개수({len(chunks)})와 벡터 개수({len(vectors)})가 일치하지 않습니다.")
+
+    collection_name = "legal_documents"  # 모든 문서를 하나의 컬렉션에 저장
 
     # 1. 컬렉션이 없으면 생성
     try:
         client.get_collection(collection_name=collection_name)
         print(f"📁 기존 컬렉션 '{collection_name}' 확인 완료")
-    except Exception: # 존재하지 않으면 에러 발생
+    except Exception:  # 존재하지 않으면 에러 발생
         print(f"📁 컬렉션 '{collection_name}' 생성 중...")
         client.create_collection(
             collection_name=collection_name,
@@ -135,18 +152,14 @@ def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], embedding
         client.create_payload_index(collection_name=collection_name, field_name="session_id", field_schema="keyword")
         print(f"📁 컬렉션 '{collection_name}' 및 인덱스 생성 완료")
 
-    # 2. 텍스트 조각을 벡터로 변환
-    print("🤖 텍스트 조각을 벡터로 변환 중...")
-    vectors = get_embeddings(embedding_client, chunks)
-
-    # 3. Qdrant에 저장할 포인트(Point) 생성
+    # 2. Qdrant에 저장할 포인트(Point) 생성
     print("📦 포인트 데이터 생성 중...")
     points = []
     for i, chunk in enumerate(chunks):
         points.append(
             models.PointStruct(
-                id=str(uuid.uuid4()), # 각 포인트마다 고유 ID 생성
-                vector=vectors[i].tolist(), # 벡터를 list 형태로 변환
+                id=str(uuid.uuid4()),  # 각 포인트마다 고유 ID 생성
+                vector=vectors[i].tolist(),  # 미리 계산된 벡터를 list 형태로 변환
                 payload={
                     "text": chunk,
                     "user_id": user_id,
@@ -155,7 +168,7 @@ def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], embedding
             )
         )
 
-    # 4. 데이터 업서트(Upsert)
+    # 3. 데이터 업서트(Upsert)
     if points:
         print(f"💾 Qdrant에 {len(points)}개 포인트 업서트 중...")
         client.upsert(collection_name=collection_name, points=points, wait=True)

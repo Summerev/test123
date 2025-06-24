@@ -94,7 +94,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
             final_summary_lang = _translate_text(final_summary_ko, target_lang_name)
             risk_text_lang = _translate_text(risk_text_ko, target_lang_name)
 
-        # 4. QA를 위한 벡터화
+        # 4. QA를 위한 벡터화 및 저장
         print("[약관 분석] 벡터화 처리 중...")
         qa_chunks = doc_retriever.split_text_into_chunks_terms(document_text, max_tokens=500)
         
@@ -102,7 +102,12 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
             faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
             storage_data = {"type": "faiss", "index": faiss_index, "chunks": indexed_chunks}
         else:
-            doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, client, user.id, session_id)
+            # 벡터화와 저장을 분리
+            print("[약관 분석] 텍스트 벡터화 중...")
+            vectors = doc_retriever.get_embeddings(client, qa_chunks)
+            
+            print("[약관 분석] Qdrant에 저장 중...")
+            doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, vectors, user.id, session_id)
             storage_data = {"type": "qdrant"}
 
         # 5. 결과 반환
