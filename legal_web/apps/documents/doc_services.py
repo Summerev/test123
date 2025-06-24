@@ -52,21 +52,21 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
 
         # 2. 한국어 기준으로 문서 요약 및 위험 요소 분석
         print("[약관 분석] OpenAI API로 분석 중...")
-        summary_chunks = doc_retriever.split_text_into_chunks(document_text, max_tokens=2000)
+        summary_chunks = doc_retriever.split_text_into_chunks_terms(document_text, max_tokens=2000)
         
         # 개별 청크 요약
         individual_summaries = []
         for chunk in summary_chunks:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": doc_prompt_manager.get_summarize_chunk_prompt(chunk, doc_type_name)}],
+                messages=[{"role": "user", "content": doc_prompt_manager.get_summarize_chunk_terms_prompt(chunk, doc_type_name)}],
                 max_tokens=300, 
                 temperature=0.3
             )
             individual_summaries.append(response.choices[0].message.content)
         
         # 전체 요약 생성
-        final_summary_ko_prompt = doc_prompt_manager.get_combine_summaries_prompt(individual_summaries, doc_type_name)
+        final_summary_ko_prompt = doc_prompt_manager.get_combine_summaries_terms_prompt(individual_summaries, doc_type_name)
         final_summary_ko = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": final_summary_ko_prompt}],
@@ -75,7 +75,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
         ).choices[0].message.content
         
         # 위험 요소 분석
-        risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_prompt(document_text)
+        risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_terms_prompt(document_text)
         risk_text_ko = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": risk_text_ko_prompt}],
@@ -94,7 +94,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
 
         # 4. QA를 위한 벡터화
         print("[약관 분석] 벡터화 처리 중...")
-        qa_chunks = doc_retriever.split_text_into_chunks(document_text, max_tokens=500)
+        qa_chunks = doc_retriever.split_text_into_chunks_terms(document_text, max_tokens=500)
         
         if isinstance(user, AnonymousUser):
             faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
