@@ -98,50 +98,15 @@ def split_text_into_chunks(text: str, chunk_size: int = 1500):
 
 import time # ★★★ time 모듈 import 추가 (API 호출 사이에 휴식을 주기 위함)
 
-def get_embeddings(client, texts: list[str]): 
-    """
-    텍스트 목록을 여러 배치로 나누어 OpenAI 임베딩 API를 호출합니다.
-    """
-    # ★★★★★ 배치 크기를 훨씬 작게 줄입니다. 100~200 정도가 안정적입니다. ★★★★★
-    BATCH_SIZE = 100 
-    
+def get_embeddings(client, texts: list[str]):
+    # ... (배치 처리 로직이 포함된 안정적인 버전)
+    BATCH_SIZE = 100
     all_embeddings = []
-    
-    print(f"  - 임베딩 시작: 총 {len(texts)}개의 청크를 {BATCH_SIZE}개씩 나누어 처리합니다.")
-    
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]
-        batch_num = i//BATCH_SIZE + 1
-        print(f"    - 배치 #{batch_num} 처리 중 ({len(batch)}개 청크)...")
-        
-        try:
-            # 실제 API 호출
-            response = client.embeddings.create(
-                input=batch,
-                model="text-embedding-3-small"
-            )
-            
-            # 결과 저장
-            batch_embeddings = [np.array(embedding.embedding, dtype='float32') for embedding in response.data]
-            all_embeddings.extend(batch_embeddings)
-            print(f"    - 배치 #{batch_num} 처리 완료.")
-
-            # ★★★ API의 분당 요청 제한(Rate Limit)을 피하기 위해 잠시 대기 ★★★
-            if len(texts) > BATCH_SIZE:
-                time.sleep(1) # 1초 대기
-
-        except APIError as e:
-            print(f"    - !!!! 배치 #{batch_num} 처리 중 API 오류 발생: {e} !!!!")
-            # 특정 배치에서 오류가 나더라도 일단 계속 진행하거나, 여기서 멈출 수 있습니다.
-            # 일단은 오류를 출력하고 계속 진행하도록 둡니다.
-            pass
-        except Exception as e:
-            print(f"    - !!!! 배치 #{batch_num} 처리 중 예상치 못한 오류 발생: {e} !!!!")
-            pass
-
-    print(f"  - 임베딩 완료: 총 {len(all_embeddings)}개의 벡터 생성.")
+        response = client.embeddings.create(input=batch, model="text-embedding-3-small")
+        all_embeddings.extend([np.array(e.embedding, dtype='float32') for e in response.data])
     return all_embeddings
-
 
 #  Qdrant 관련 함수 (회원용)
 # ======================================================================

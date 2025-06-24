@@ -46,45 +46,70 @@ def _translate_text(text: str, target_lang_name: str) -> str:
 
 
 # 질의응답 서비스 함수 
-# ★★★★★ 이 함수를 아래의 '단순한 RAG 버전'으로 교체해주세요 ★★★★★
+
 def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_history=[]):
-    """
-    (단순화된 버전) 사용자 유형에 따라 검색하고 답변을 생성/번역합니다.
-    """
+
     try:
         print(f"[RAG 시작] 질문: '{question}'")
-        # --- 1. 컨텍스트 검색 ---
-        top_k = 5 # 기본 검색 결과 수를 3~5개로 설정
 
+        # --- 1. 넓게 검색 (top_k=20) ---
+        top_k_initial = 20
+        
         if isinstance(user, AnonymousUser):
+            # 비회원 FAISS 검색
             if not faiss_data or 'index' not in faiss_data or 'chunks' not in faiss_data:
                 return {"success": False, "error": "분석된 문서 정보가 만료되었습니다."}
             
-            relevant_chunks = doc_retriever.search_faiss_index(
+            initial_chunks = doc_retriever.search_faiss_index(
                 index=faiss_data['index'],
                 chunks=faiss_data['chunks'],
                 client=client,
-                query=question, # ★ 원래 질문을 그대로 검색에 사용
-                top_k=top_k
+                query=question,
+                top_k=top_k_initial
             )
         else:
-            relevant_chunks = doc_retriever.search_qdrant(
+            # 회원 Qdrant 검색
+            initial_chunks = doc_retriever.search_qdrant(
                 client=qdrant_client,
                 embedding_client=client,
-                query=question, # ★ 원래 질문을 그대로 검색에 사용
+                query=question,
                 user_id=user.id,
                 session_id=session_id,
-                top_k=top_k
+                top_k=top_k_initial
             )
+        
+        print(f"  - 1차 검색 결과: {len(initial_chunks)}개의 청크를 가져왔습니다.")
 
-        if not relevant_chunks:
-            print("[RAG 결과] 관련성 높은 문서를 찾지 못했습니다.")
+        # --- 2. 키워드 후처리 및 재정렬 ---
+        article_match = re.search(r'(\d+)\s*조', question)
+        
+        if article_match and initial_chunks:
+            article_number = article_match.group(1)
+            keyword = f"제{article_number}조"
+            print(f"  - 질문에서 키워드 '{keyword}'를 감지하여 결과를 재정렬합니다.")
+            
+            with_keyword = []
+            without_keyword = []
+            for chunk in initial_chunks:
+                if chunk.strip().startswith(keyword):
+                    with_keyword.append(chunk)
+                else:
+                    without_keyword.append(chunk)
+            
+            relevant_chunks = with_keyword + without_keyword
+        else:
+            relevant_chunks = initial_chunks
+        
+        # --- 3. 최종 컨텍스트 선택 ---
+        final_context_chunks = relevant_chunks[:5] # 상위 5개만 사용
+        
+        if not final_context_chunks:
             return {"success": True, "answer": "죄송합니다. 문서에서 질문과 관련된 정보를 찾을 수 없습니다."}
+            
+        print(f"  - 최종적으로 {len(final_context_chunks)}개의 청크를 컨텍스트로 사용합니다.")
+        context = "\n\n---\n\n".join(final_context_chunks)
 
-        print(f"[RAG 결과] {len(relevant_chunks)}개의 관련성 높은 문서를 찾았습니다.")
-        context = "\n\n---\n\n".join(relevant_chunks)
-
-        # --- 2. 답변 생성 ---
+        # --- 4. 답변 생성  ---
         korean_prompt = prompt_manager.get_answer_prompt(context, question)
         
         messages = [{"role": "system", "content": "You are a helpful legal AI assistant."}]
@@ -96,7 +121,7 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
         response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages, max_tokens=700, temperature=0.5)
         answer_ko = response.choices[0].message.content
 
-        # --- 3. 번역 ---
+        # --- 5. 번역 ---
         final_answer = answer_ko
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
         if language in lang_map:
