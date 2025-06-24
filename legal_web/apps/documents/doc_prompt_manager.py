@@ -1,6 +1,6 @@
 # teamproject/legal_web/apps/documents/doc_prompt_manager.py
 
-# --- 문서 요약 관련 프롬프트 ---
+# --- 약관 문서 조각 요약 프롬프트 ---
 def get_summarize_chunk_terms_prompt(chunk_text, doc_type_name):
     return f"""
 다음 {doc_type_name} 조항/내용을 3~5문장으로 간결하게 요약해 주세요. 법률 용어는 쉬운 말로 풀어서 설명해 주세요.
@@ -9,6 +9,7 @@ def get_summarize_chunk_terms_prompt(chunk_text, doc_type_name):
 {chunk_text}
 """
 
+# --- 약관 문서 종합 요약 프롬프트 ---
 def get_combine_summaries_terms_prompt(summary_list, doc_type_name):
     combined_text = "\n\n".join(summary_list)
     return f"""
@@ -25,9 +26,9 @@ def get_combine_summaries_terms_prompt(summary_list, doc_type_name):
 {combined_text}
 """
 
-# --- 위험 요소 식별 관련 프롬프트 ---
+# --- 약관 위험 요소 식별 관련 프롬프트 ---
 def get_risk_factors_terms_prompt(full_text: str):
-    return f"""    
+    return f"""
 다음은 약관 전체 원문입니다. 아래와 같은 내용을 조항 번호와 함께 정리해주세요:
 
 ### 면책 또는 손해배상 조항
@@ -43,5 +44,3 @@ def get_risk_factors_terms_prompt(full_text: str):
 [원문]
 {full_text[:12000]}
 """
-
-

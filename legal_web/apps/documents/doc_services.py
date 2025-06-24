@@ -4,15 +4,16 @@ from openai import OpenAI, APIError
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 
-from . import doc_retriever 
-from . import doc_prompt_manager 
+from . import doc_retriever
+from . import doc_prompt_manager
+
+import os
+import fitz
+import docx
 
 # 클라이언트 초기화 (settings.py에 OPENAI_API_KEY 설정)
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 qdrant_client = doc_retriever.get_qdrant_client()
-
-
-
 
 def _translate_text(text: str, target_lang_name: str) -> str:
     """
@@ -36,6 +37,7 @@ def _translate_text(text: str, target_lang_name: str) -> str:
         print(f"Unexpected error during translation: {e}")
         return f"({target_lang_name} 번역 실패: 시스템 오류) {text}"
 
+# 약관 
 def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
     """
     약관 문서 분석: RAG 기반 요약 및 위험 요소 분석
