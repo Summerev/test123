@@ -55,7 +55,7 @@ export function saveChatHistory() {
 }
 
 // 🔹 수정: saveChatSessionInfo 함수 - chat_session_info에 title과 canChat 함께 저장
-export function saveChatSessionInfo(sessionId, {titleText = '새 대화', canChatStatus = false, docType = null }) {
+export function saveChatSessionInfo(sessionId, { titleText = '새 대화', canChatStatus = false, docType = null }) {
     const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
 
     if (!chat_session_info[sessionId]) {
@@ -109,29 +109,29 @@ export function getChatEnabled(sessionId) {
 // 🔹 수정: addMessageToChatAndHistory 함수 (sessionId를 인자로 받음)
 // 이 함수가 메시지 추가의 유일한 진입점이 되어야 합니다.
 export function addMessageToChatAndHistory(sessionId, messageObj, isHistory = false) {
-  if (!chatSessions[sessionId]) {
-    chatSessions[sessionId] = [];
-  }
+    if (!chatSessions[sessionId]) {
+        chatSessions[sessionId] = [];
+    }
 
-  const lastMessage = chatSessions[sessionId].slice(-1)[0];
-  const isDuplicate =
-    lastMessage &&
-    lastMessage.id === messageObj.id &&
-    lastMessage.text === messageObj.text;
+    const lastMessage = chatSessions[sessionId].slice(-1)[0];
+    const isDuplicate =
+        lastMessage &&
+        lastMessage.id === messageObj.id &&
+        lastMessage.text === messageObj.text;
 
-  if (!isDuplicate) {
-    chatSessions[sessionId].push(messageObj);
-    saveChatHistory();
-  }
+    if (!isDuplicate) {
+        chatSessions[sessionId].push(messageObj);
+        saveChatHistory();
+    }
 
-  addMessageToUI(
-    messageObj.text,
-    messageObj.sender,
-    messageObj.id,
-    messageObj.timestamp,
-    isHistory,
-    false // isTemporary
-  );
+    addMessageToUI(
+        messageObj.text,
+        messageObj.sender,
+        messageObj.id,
+        messageObj.timestamp,
+        isHistory,
+        false // isTemporary
+    );
 }
 
 
@@ -153,30 +153,32 @@ export function loadChatHistoryFromStorage() {
 
 export function clearAllChats() {
     if (confirm(getTranslation('confirmClearChat'))) {
-        chatHistory = []; // 이 변수 초기화 (더 이상 주 저장소가 아니므로)
-        chat_session_info = {}; // 모든 세션 제목 및 상태 초기화
-        chatSessions = {}; // 모든 세션 대화 기록 초기화 (chatTabState.js의 chatSessions와 동기화)
-        
-        localStorage.removeItem('legalBotChatHistory'); // 제거 (더 이상 사용 안함)
-        localStorage.removeItem('chat_session_info'); 
-        localStorage.removeItem('chat_sessions'); // chatSessions 초기화 시 함께 제거
+        // ❌ 오류 원인 제거
+        // chatHistory = [];
 
-        // openTabs도 초기화 (모든 탭 닫기)
-        for (const tabId in openTabs) {
-            delete openTabs[tabId];
-        }
-        setActiveTab(null); // 활성 탭도 null로 설정
-        saveTabState(); // 변경된 openTabs, chatSessions(초기화됨) 상태 저장
+        // 내부 데이터만 초기화
+        Object.keys(chat_session_info).forEach(key => delete chat_session_info[key]);
+        Object.keys(chatSessions).forEach(key => delete chatSessions[key]);
+        Object.keys(openTabs).forEach(key => delete openTabs[key]);
 
-        loadChatHistoryFromStorage(); // 메시지 영역 비움 (활성 탭이 없으므로 비어있을 것)
+        localStorage.removeItem('legalBotChatHistory');
+        localStorage.removeItem('chat_session_info');
+        localStorage.removeItem('chat_sessions');
+
+        setActiveTab(null);
+        saveTabState();
+        loadChatHistoryFromStorage();
+
         const chatInput = $('#chatInput');
         const sendButton = $('#sendButton');
         if (chatInput) chatInput.value = '';
         if (sendButton) sendButton.disabled = true;
         if (chatInput) chatInput.style.height = 'auto';
+
         alert(getTranslation('chatCleared'));
-        renderTabBar(); // 탭 바도 갱신
-        renderRecentChats(getChatSessionList()); // 최근 채팅 갱신
+
+        renderTabBar();
+        renderRecentChats(getChatSessionList());
     }
 }
 
@@ -188,15 +190,22 @@ export function getChatHistory(sessionId) {
 // 🔹 수정: getChatSessionList 함수 - chat_session_info의 모든 정보 반환
 export function getChatSessionList() {
     // chat_session_info의 모든 항목을 배열로 반환
-    return Object.entries(chat_session_info).map(([id, data]) => ({ 
-        id: id, 
-        title: data.title, 
-        canChat: data.canChat 
+    return Object.entries(chat_session_info).map(([id, data]) => ({
+        id: id,
+        title: data.title,
+        canChat: data.canChat
     }));
 }
 
 // ─── 세션 삭제 함수 ───
-export function deleteChatSession(sessionId) {
+
+export function clearChatSessionTitles() {
+    chat_session_info = {}; // 모듈 내 변수 초기화
+    localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
+    // openTabs 및 chatSessions 초기화는 clearAllChats에서 처리
+}
+
+function deleteChatSession(sessionId) {
     const chatMessages = $('#chatMessages');
 
     // 1. 제목 및 canChat 상태 삭제 (세션 정보에서 제거)
@@ -228,8 +237,5 @@ export function deleteChatSession(sessionId) {
     }
 }
 
-export function clearChatSessionTitles() {
-    chat_session_info = {}; // 모듈 내 변수 초기화
-    localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
-    // openTabs 및 chatSessions 초기화는 clearAllChats에서 처리
-}
+// Named export로 deleteChatSession 내보내기
+export { deleteChatSession };

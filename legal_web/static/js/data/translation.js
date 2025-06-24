@@ -121,6 +121,10 @@ const translations = {
     clearChatTooltip: '대화 삭제',
     confirmClearChat: '모든 대화 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
     chatCleared: '대화 기록이 삭제되었습니다.',
+    deleteChatTitle: '채팅을 삭제하시겠습니까?',
+    deleteChatConfirm: '이 행동으로 선택한 채팅이 삭제됩니다.',
+    cancel: '취소',
+    delete: '삭제',
     enterKeySettingLabel: 'Enter키로 전송',
     contractQueryPrompt: (contractName) =>
       `"${contractName}"에 대해 무엇이 궁금하신가요? 특정 조항(예: 제3조)이나 내용에 대해 질문해주세요.`,
@@ -259,6 +263,10 @@ const translations = {
     confirmClearChat:
       'Are you sure you want to delete all chat history? This action cannot be undone.',
     chatCleared: 'Chat history has been cleared.',
+    deleteChatTitle: 'Delete this chat?',
+    deleteChatConfirm: 'This action will delete the selected chat.',
+    cancel: 'Cancel',
+    delete: 'Delete',
     enterKeySettingLabel: 'Send with Enter key',
     contractQueryPrompt: (contractName) =>
       `What would you like to know about "${contractName}"? Ask about a specific article (e.g., Article 3) or its content.`,
@@ -387,6 +395,10 @@ const translations = {
     clearChatTooltip: 'チャット履歴を削除',
     confirmClearChat: 'すべてのチャット履歴を削除しますか？この操作は元に戻せません。',
     chatCleared: 'チャット履歴が削除されました。',
+    deleteChatTitle: 'このチャットを削除しますか？',
+    deleteChatConfirm: 'この操作で選択されたチャットが削除されます。',
+    cancel: 'キャンセル',
+    delete: '削除',
     enterKeySettingLabel: 'Enterキーで送信',
     contractQueryPrompt: (contractName) =>
       `「${contractName}」について何を知りたいですか？ 特定の条項（例: 第3条）や内容について質問してください。`,
@@ -513,6 +525,10 @@ const translations = {
     clearChatTooltip: '清除聊天记录',
     confirmClearChat: '您确定要删除所有聊天记录吗？此操作无法撤销。',
     chatCleared: '聊天记录已清除。',
+    deleteChatTitle: '您确定要删除此聊天吗？',
+    deleteChatConfirm: '此操作将删除所选聊天记录。',
+    cancel: '取消',
+    delete: '删除',
     enterKeySettingLabel: '使用Enter键发送',
     contractQueryPrompt: (contractName) =>
       `您想了解关于“${contractName}”的什么信息？请询问具体条款（例如：第3条）或其内容。`,
@@ -642,6 +658,10 @@ const translations = {
     confirmClearChat:
       '¿Está seguro de que desea eliminar todo el historial de chat? Esta acción no se puede deshacer.',
     chatCleared: 'El historial de chat ha sido borrado.',
+    deleteChatTitle: '¿Deseas eliminar este chat?',
+    deleteChatConfirm: 'Esta acción eliminará el chat seleccionado.',
+    cancel: 'Cancelar',
+    delete: 'Eliminar',
     enterKeySettingLabel: 'Enviar con la tecla Enter',
     contractQueryPrompt: (contractName) =>
       `¿Qué le gustaría saber sobre "${contractName}"? Pregunte sobre un artículo específico (p. ej., Artículo 3) o su contenido.`,
@@ -976,39 +996,39 @@ let feedbackData = JSON.parse(localStorage.getItem('legalBotFeedbackData')) || [
  * @returns {string} The translated text.
  */
 export function getTranslation(key, ...args) {
-    const translationSet = translations[currentLanguage] || translations.ko;
-    let translatedString = translationSet[key] || key;
-    if (typeof translatedString === 'function') {
-        return translatedString(...args);
-    }
-    return translatedString;
+  const translationSet = translations[currentLanguage] || translations.ko;
+  let translatedString = translationSet[key] || key;
+  if (typeof translatedString === 'function') {
+    return translatedString(...args);
+  }
+  return translatedString;
 }
 
 /**
  * Applies translations to all translatable elements on the page.
  */
 export function applyTranslations() {
-    document.querySelectorAll('[data-translate-key]').forEach((el) => {
-        const key = el.getAttribute('data-translate-key');
-        el.textContent = getTranslation(key);
-    });
-    document.querySelectorAll('[data-translate-key-placeholder]').forEach((el) => {
-        const key = el.getAttribute('data-translate-key-placeholder');
-        el.placeholder = getTranslation(key);
-    });
+  document.querySelectorAll('[data-translate-key]').forEach((el) => {
+    const key = el.getAttribute('data-translate-key');
+    el.textContent = getTranslation(key);
+  });
+  document.querySelectorAll('[data-translate-key-placeholder]').forEach((el) => {
+    const key = el.getAttribute('data-translate-key-placeholder');
+    el.placeholder = getTranslation(key);
+  });
 
-    const langButtonText = document.querySelector('.language-btn > span:first-child');
-    if (langButtonText) {
-        langButtonText.textContent = getTranslation('language');
-    }
+  const langButtonText = document.querySelector('.language-btn > span:first-child');
+  if (langButtonText) {
+    langButtonText.textContent = getTranslation('language');
+  }
 
-    const themeToggleButton = document.getElementById('themeToggle');
-    if (themeToggleButton) {
-        themeToggleButton.title =
-            currentTheme === 'light'
-                ? getTranslation('themeToggleDark')
-                : getTranslation('themeToggleLight');
-    }
+  const themeToggleButton = document.getElementById('themeToggle');
+  if (themeToggleButton) {
+    themeToggleButton.title =
+      currentTheme === 'light'
+        ? getTranslation('themeToggleDark')
+        : getTranslation('themeToggleLight');
+  }
 }
 
 /**
@@ -1016,21 +1036,21 @@ export function applyTranslations() {
  * @param {string} lang - The language code to change to (e.g., 'ko', 'en').
  */
 export function changeLanguage(lang) {
-    currentLanguage = lang;
-    localStorage.setItem('legalBotLanguage', lang);
-    document.documentElement.lang = lang;
-    applyTranslations();
+  currentLanguage = lang;
+  localStorage.setItem('legalBotLanguage', lang);
+  document.documentElement.lang = lang;
+  applyTranslations();
 
-	const selectedLanguageText = getTranslation(`${lang === 'ko' ? 'koreanTerm' :
-                                                  lang === 'en' ? 'englishTerm' :
-                                                  lang === 'ja' ? 'japaneseTerm' :
-                                                  lang === 'zh' ? 'chineseTerm' :
-                                                  lang === 'es' ? 'spanishTerm' : 'koreanTerm'}`);
+  const selectedLanguageText = getTranslation(`${lang === 'ko' ? 'koreanTerm' :
+    lang === 'en' ? 'englishTerm' :
+      lang === 'ja' ? 'japaneseTerm' :
+        lang === 'zh' ? 'chineseTerm' :
+          lang === 'es' ? 'spanishTerm' : 'koreanTerm'}`);
 
-    const selectedLangSpan = document.getElementById('selectedLanguage');
-    if (selectedLangSpan) {
-        selectedLangSpan.textContent = `🌐 ${selectedLanguageText}`;
-    }
+  const selectedLangSpan = document.getElementById('selectedLanguage');
+  if (selectedLangSpan) {
+    selectedLangSpan.textContent = `🌐 ${selectedLanguageText}`;
+  }
 }
 
 /**
@@ -1038,7 +1058,7 @@ export function changeLanguage(lang) {
  * @returns {string} The current language code.
  */
 export function getCurrentLanguage() {
-    return currentLanguage;
+  return currentLanguage;
 }
 
 /**
@@ -1046,7 +1066,7 @@ export function getCurrentLanguage() {
  * @returns {string} The current interpretation mode.
  */
 export function getCurrentInterpretationMode() {
-    return currentInterpretationMode;
+  return currentInterpretationMode;
 }
 
 /**
@@ -1054,9 +1074,9 @@ export function getCurrentInterpretationMode() {
  * @param {string} mode - The mode to set (e.g., 'default', 'easy').
  */
 export function setInterpretationMode(mode) {
-    currentInterpretationMode = mode;
-    localStorage.setItem('legalBotInterpretationMode', currentInterpretationMode);
-    console.log('Interpretation Mode set to:', currentInterpretationMode);
+  currentInterpretationMode = mode;
+  localStorage.setItem('legalBotInterpretationMode', currentInterpretationMode);
+  console.log('Interpretation Mode set to:', currentInterpretationMode);
 }
 
 /**
@@ -1064,7 +1084,7 @@ export function setInterpretationMode(mode) {
  * @returns {boolean} True if Enter key sends, false otherwise.
  */
 export function getEnterKeySends() {
-    return enterKeySends;
+  return enterKeySends;
 }
 
 /**
@@ -1072,8 +1092,8 @@ export function getEnterKeySends() {
  * @param {boolean} enabled - True to enable, false to disable.
  */
 export function setEnterKeySends(enabled) {
-    enterKeySends = enabled;
-    localStorage.setItem('legalBotEnterKeySends', enabled);
+  enterKeySends = enabled;
+  localStorage.setItem('legalBotEnterKeySends', enabled);
 }
 
 /**
@@ -1081,7 +1101,7 @@ export function setEnterKeySends(enabled) {
  * @returns {Array<object>} Array of feedback data.
  */
 export function getFeedbackData() {
-    return feedbackData;
+  return feedbackData;
 }
 
 /**
@@ -1089,8 +1109,8 @@ export function getFeedbackData() {
  * @param {object} newFeedback - The feedback object to add.
  */
 export function addFeedbackData(newFeedback) {
-    feedbackData.push(newFeedback);
-    localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
+  feedbackData.push(newFeedback);
+  localStorage.setItem('legalBotFeedbackData', JSON.stringify(feedbackData));
 }
 
 
@@ -1100,7 +1120,7 @@ export function addFeedbackData(newFeedback) {
  * @returns {object} The legal terms dictionary.
  */
 export function getLegalTerms() {
-    return legalTerms;
+  return legalTerms;
 }
 
 /**
@@ -1108,7 +1128,7 @@ export function getLegalTerms() {
  * @returns {string} The current theme ('light' or 'dark').
  */
 export function getCurrentTheme() {
-    return currentTheme;
+  return currentTheme;
 }
 
 /**
@@ -1116,6 +1136,6 @@ export function getCurrentTheme() {
  * @param {string} theme - The theme to set ('light' or 'dark').
  */
 export function setCurrentTheme(theme) {
-    currentTheme = theme;
-    localStorage.setItem('legalBotTheme', theme);
+  currentTheme = theme;
+  localStorage.setItem('legalBotTheme', theme);
 }

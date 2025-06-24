@@ -65,3 +65,18 @@ export function on(element, eventType, handler) {
 export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
+
+/**
+ * 요소 생성 헬퍼 함수
+ * @param {string} tag - 태그 이름 (예: 'div', 'input')
+ * @param {string} [className] - 클래스 이름
+ * @param {string} [text] - 텍스트 콘텐츠
+ * @returns {HTMLElement} 생성된 DOM 요소
+ */
+export function createElement(tag, className = '', text = '') {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text) el.textContent = text;
+    return el;
+}
+

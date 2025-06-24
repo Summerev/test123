@@ -14,7 +14,7 @@ import {
     saveChatSessionInfo,   // ← 추가
     getChatSessionList,
 } from './data/chatHistoryManager.js';
-import { clearChatSessionTitles, addMessageToChatAndHistory, getChatTitle  } from './data/chatHistoryManager.js';
+import { clearChatSessionTitles, addMessageToChatAndHistory, getChatTitle } from './data/chatHistoryManager.js';
 import { initThemeToggle } from './ui/themeToggle.js';
 import { initDropdowns } from './ui/dropdowns.js';
 import { initCollapsibles } from './ui/sidebarCollapsible.js';
@@ -25,9 +25,11 @@ import {
 
     renderRecentChats,         // ← 추가
     createNewSession,
-	initChatUI,
-	addMessageToUI,
-	generateMessageId,
+    initChatUI,
+    addMessageToUI,
+    generateMessageId,
+    openDeleteModal,
+    initDeleteModalEvents
 } from './ui/chatUI.js';
 import { createTab, renderTabBar, restoreTabs, } from './ui/chatTabUI.js'
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
@@ -60,7 +62,7 @@ const navLogoutButton = $('#logout-button');
 const navUserDisplayName = $('#user-display-name');
 
 // 로그인 유지 체크박스
-const rememberMeCheckbox = $('#rememberMe'); 
+const rememberMeCheckbox = $('#rememberMe');
 
 // --- Core Functions ---
 
@@ -70,48 +72,48 @@ export function generateSessionId() {
 }
 
 export function handleSendMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
+    const text = chatInput.value.trim();
+    if (!text) return;
 
-  let sessionId = getActiveTab();
+    let sessionId = getActiveTab();
 
-  // 세션이 없으면 새로 생성
-  if (!sessionId || !chatSessions[sessionId]) {
-    sessionId = createNewSession();
-  }
-
-  const messageObj = {
-    id: generateMessageId(),
-    sender: 'user',
-    text,
-    timestamp: new Date().toISOString()
-  };
-
-  // 메시지 추가 및 저장
-  addMessageToChatAndHistory(sessionId, messageObj);
-
-  // 탭 제목이 '새 대화'일 경우 첫 메시지로 변경
-  if (chatSessions[sessionId].length === 1) {
-    const currentTitle = openTabs[sessionId]?.title || '새 대화';
-    if (currentTitle === '새 대화') {
-      const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
-      saveChatSessionInfo(sessionId, title);
-      openTabs[sessionId].title = title;
-      renderTabBar();
-      renderRecentChats(getChatSessionList());
+    // 세션이 없으면 새로 생성
+    if (!sessionId || !chatSessions[sessionId]) {
+        sessionId = createNewSession();
     }
-  }
 
-  // 입력창 초기화
-  chatInput.value = '';
-  chatInput.style.height = 'auto';
-  sendButton.disabled = true;
+    const messageObj = {
+        id: generateMessageId(),
+        sender: 'user',
+        text,
+        timestamp: new Date().toISOString()
+    };
 
-  // 웰컴 메시지 숨기기
-  if (welcomeMessage) welcomeMessage.classList.add('hidden');
+    // 메시지 추가 및 저장
+    addMessageToChatAndHistory(sessionId, messageObj);
 
-  // 챗봇 응답
-  processUserMessage(text, sessionId);
+    // 탭 제목이 '새 대화'일 경우 첫 메시지로 변경
+    if (chatSessions[sessionId].length === 1) {
+        const currentTitle = openTabs[sessionId]?.title || '새 대화';
+        if (currentTitle === '새 대화') {
+            const title = text.length > 20 ? text.slice(0, 20) + '...' : text;
+            saveChatSessionInfo(sessionId, title);
+            openTabs[sessionId].title = title;
+            renderTabBar();
+            renderRecentChats(getChatSessionList());
+        }
+    }
+
+    // 입력창 초기화
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    sendButton.disabled = true;
+
+    // 웰컴 메시지 숨기기
+    if (welcomeMessage) welcomeMessage.classList.add('hidden');
+
+    // 챗봇 응답
+    processUserMessage(text, sessionId);
 }
 
 
@@ -128,14 +130,14 @@ async function processUserMessage(text, tabId) {
     };
 
     const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
-    
+
     if (!chatSessions[activeTabId]) {
         chatSessions[activeTabId] = [];
     }
 
     // 세션에 봇 메시지 저장
     chatSessions[activeTabId].push(botMsg);
-    
+
     // UI에 봇 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
     addMessageToUI(
         botMsg.text,         // messageText
@@ -145,7 +147,7 @@ async function processUserMessage(text, tabId) {
         false,               // isHistory
         false                // isTemporary
     );
-    
+
     // 상태 저장
     saveTabState();
 }
@@ -153,11 +155,12 @@ async function processUserMessage(text, tabId) {
 // --- Tab Rendering (변경 없음) ---
 
 
-	document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Initial Setup and State Loading
     applyTranslations();
     initThemeToggle();
+    initDeleteModalEvents();  // 삭제 모달 이벤트 연결
 
     const defaultModeRadio = $('#defaultModeSidebar');
     const easyModeRadio = $('#easyModeSidebar');
@@ -172,45 +175,43 @@ async function processUserMessage(text, tabId) {
         enterKeyToggle.checked = getEnterKeySends();
     }
 
-
     // 2. Initialize UI Components
     initDropdowns();
     initCollapsibles();
     initModals();
     initChatInputAutoResize();
     initExamplePrompts();
-
-    initChatInputAutoResize();
     initFileUpload();
-	initChatUI();
+    initChatUI();
+
     // 3. Load Chat History and Recent Chats
     loadChatHistoryFromStorage();
-
-	restoreTabs();
-
+    restoreTabs();
     renderRecentChats(getChatSessionList());
-	
-	document.querySelectorAll('#languageDropdown .dropdown-item').forEach((item) => {
+
+    document.querySelectorAll('#languageDropdown .dropdown-item').forEach((item) => {
         item.addEventListener('click', function (e) {
             e.preventDefault();
             const lang = this.getAttribute('data-lang');
-            changeLanguage(lang);  // translation.js에서 가져온 함수
+            changeLanguage(lang);
         });
     });
+
+
 
     // ✅ 초기 언어 버튼 텍스트 표시
     const selectedLangSpan = document.getElementById('selectedLanguage');
     if (selectedLangSpan) {
         const langText = getTranslation(
             getCurrentLanguage() === 'ko' ? 'koreanTerm' :
-            getCurrentLanguage() === 'en' ? 'englishTerm' :
-            getCurrentLanguage() === 'ja' ? 'japaneseTerm' :
-            getCurrentLanguage() === 'zh' ? 'chineseTerm' :
-            getCurrentLanguage() === 'es' ? 'spanishTerm' : 'koreanTerm'
+                getCurrentLanguage() === 'en' ? 'englishTerm' :
+                    getCurrentLanguage() === 'ja' ? 'japaneseTerm' :
+                        getCurrentLanguage() === 'zh' ? 'chineseTerm' :
+                            getCurrentLanguage() === 'es' ? 'spanishTerm' : 'koreanTerm'
         );
         selectedLangSpan.textContent = `🌐 ${langText}`;
     }
-	
+
     // -------------------------------------------------------------
     // **수정된 부분: 로그인/회원가입/로그아웃 로직 및 UI 업데이트**
     // -------------------------------------------------------------
@@ -223,7 +224,7 @@ async function processUserMessage(text, tabId) {
         on(navLoginButton, 'click', (event) => {
             event.preventDefault();
             console.log("Navbar Login button clicked. Opening login modal.");
-            openModal('loginModal'); 
+            openModal('loginModal');
         });
     }
 
@@ -232,95 +233,95 @@ async function processUserMessage(text, tabId) {
         on(navSignupButton, 'click', (event) => {
             event.preventDefault();
             console.log("Navbar Signup button clicked. Opening signup modal.");
-            openModal('signupModal'); 
+            openModal('signupModal');
         });
     }
 
-// 로그인 폼 제출 이벤트 리스너
-if (loginForm) {
-	on(loginForm, 'submit', async (event) => {
-		event.preventDefault();
+    // 로그인 폼 제출 이벤트 리스너
+    if (loginForm) {
+        on(loginForm, 'submit', async (event) => {
+            event.preventDefault();
 
-		// 👇 이 부분도 querySelector로 변경합니다.
-		const emailInput = loginForm.querySelector('input[name="email"]');
-		const passwordInput = loginForm.querySelector('input[name="password"]');
+            // 👇 이 부분도 querySelector로 변경합니다.
+            const emailInput = loginForm.querySelector('input[name="email"]');
+            const passwordInput = loginForm.querySelector('input[name="password"]');
 
-		// 요소가 제대로 찾아졌는지 확인하는 방어 코드
-		if (!emailInput) {
-			console.error("Error: Login form email input not found with name='email'.");
-			alert("이메일 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
-			return;
-		}
-		if (!passwordInput) {
-			console.error("Error: Login form password input not found with name='password'.");
-			alert("비밀번호 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
-			return;
-		}
+            // 요소가 제대로 찾아졌는지 확인하는 방어 코드
+            if (!emailInput) {
+                console.error("Error: Login form email input not found with name='email'.");
+                alert("이메일 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+                return;
+            }
+            if (!passwordInput) {
+                console.error("Error: Login form password input not found with name='password'.");
+                alert("비밀번호 입력 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+                return;
+            }
 
-		const email = emailInput.value;
-		const password = passwordInput.value;
-		const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            const rememberMe = rememberMeCheckbox ? rememberMeCheckbox.checked : false;
 
-		console.log('Attempting login with:', email, 'Remember Me:', rememberMe);
-		const result = await loginUser(email, password, rememberMe);
+            console.log('Attempting login with:', email, 'Remember Me:', rememberMe);
+            const result = await loginUser(email, password, rememberMe);
 
-		// 👇 이 부분이 핵심입니다! 로그인 성공 시 UI 업데이트 및 모달 닫기
-		if (result.success) {
-			alert(result.message); // 로그인 성공 메시지 표시
-			updateAuthUI(); // UI 업데이트 함수 호출 (로그인 상태 반영)
-			closeModal('loginModal'); // 로그인 모달 닫기
-			loginForm.reset(); // 폼 필드 초기화 (선택 사항이지만 좋은 사용자 경험 제공)
-		} else {
-			alert(result.error); // 로그인 실패 메시지 표시
-			console.error('로그인 실패:', result.error);
-		}
-	});
-}
+            // 👇 이 부분이 핵심입니다! 로그인 성공 시 UI 업데이트 및 모달 닫기
+            if (result.success) {
+                alert(result.message); // 로그인 성공 메시지 표시
+                updateAuthUI(); // UI 업데이트 함수 호출 (로그인 상태 반영)
+                closeModal('loginModal'); // 로그인 모달 닫기
+                loginForm.reset(); // 폼 필드 초기화 (선택 사항이지만 좋은 사용자 경험 제공)
+            } else {
+                alert(result.error); // 로그인 실패 메시지 표시
+                console.error('로그인 실패:', result.error);
+            }
+        });
+    }
 
-// 회원가입 폼 제출 이벤트 리스너
-if (signupForm) {
-    on(signupForm, 'submit', async (event) => {
-        event.preventDefault();
+    // 회원가입 폼 제출 이벤트 리스너
+    if (signupForm) {
+        on(signupForm, 'submit', async (event) => {
+            event.preventDefault();
 
-        // 👇 이 부분을 수정합니다. (signupForm.elements 대신 querySelector 사용)
-        const nameInput = signupForm.querySelector('input[name="name"]');
-        const emailInput = signupForm.querySelector('input[name="email"]');
-        const passwordInput = signupForm.querySelector('input[name="password"]');
-        const confirmPasswordInput = signupForm.querySelector('input[name="confirmPassword"]');
+            // 👇 이 부분을 수정합니다. (signupForm.elements 대신 querySelector 사용)
+            const nameInput = signupForm.querySelector('input[name="name"]');
+            const emailInput = signupForm.querySelector('input[name="email"]');
+            const passwordInput = signupForm.querySelector('input[name="password"]');
+            const confirmPasswordInput = signupForm.querySelector('input[name="confirmPassword"]');
 
-        // 요소가 제대로 찾아졌는지 확인하는 방어 코드 (매우 중요)
-        if (!nameInput || !emailInput || !passwordInput || !confirmPasswordInput) {
-            console.error("Error: One or more signup form input fields not found.");
-            alert("회원가입 폼 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
-            return; // 함수 실행 중단
-        }
+            // 요소가 제대로 찾아졌는지 확인하는 방어 코드 (매우 중요)
+            if (!nameInput || !emailInput || !passwordInput || !confirmPasswordInput) {
+                console.error("Error: One or more signup form input fields not found.");
+                alert("회원가입 폼 필드를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+                return; // 함수 실행 중단
+            }
 
-        const name = nameInput.value;
-        const email = emailInput.value;
-        const password = passwordInput.value;
-        const confirmPassword = confirmPasswordInput.value;
+            const name = nameInput.value;
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
 
-        console.log('Attempting signup with:', name, email);
-        const result = await signupUser(name, email, password, confirmPassword);
+            console.log('Attempting signup with:', name, email);
+            const result = await signupUser(name, email, password, confirmPassword);
 
-        if (result.success) {
-            alert(result.message);
-            updateAuthUI();
-            closeModal('signupModal');
-            signupForm.reset();
-        } else {
-            alert(result.error);
-            console.error('회원가입 실패:', result.error);
-        }
-    });
-}
+            if (result.success) {
+                alert(result.message);
+                updateAuthUI();
+                closeModal('signupModal');
+                signupForm.reset();
+            } else {
+                alert(result.error);
+                console.error('회원가입 실패:', result.error);
+            }
+        });
+    }
 
     // 모달 전환 링크 이벤트 리스너 (로그인 -> 회원가입)
     if (noAccountLink) {
         on(noAccountLink, 'click', (e) => {
             e.preventDefault();
-            closeModal('loginModal'); 
-            openModal('signupModal'); 
+            closeModal('loginModal');
+            openModal('signupModal');
         });
     }
 
@@ -328,8 +329,8 @@ if (signupForm) {
     if (alreadyAccountLink) {
         on(alreadyAccountLink, 'click', (e) => {
             e.preventDefault();
-            closeModal('signupModal'); 
-            openModal('loginModal'); 
+            closeModal('signupModal');
+            openModal('loginModal');
         });
     }
 
@@ -346,9 +347,9 @@ if (signupForm) {
                 // 로그인 상태
                 if (navLoginButton) navLoginButton.style.display = 'none';
                 if (navSignupButton) navSignupButton.style.display = 'none';
-                if (navLogoutButton) navLogoutButton.style.display = 'block'; 
+                if (navLogoutButton) navLogoutButton.style.display = 'block';
                 if (navUserDisplayName && data.user) { // 서버에서 user 정보도 같이 받아옴
-                    navUserDisplayName.textContent = `${data.user.name}님`; 
+                    navUserDisplayName.textContent = `${data.user.name}님`;
                     navUserDisplayName.style.display = 'inline-block';
                 }
                 // 로그인 모달이 열려있다면 닫기 (자동 로그인 상태일 경우)
@@ -390,7 +391,7 @@ if (signupForm) {
                 updateAuthUI(); // 로그아웃 후 UI 업데이트
             } else {
                 // 서버에서 '세션 만료' 등의 에러를 반환했을 경우
-                alert(result.error); 
+                alert(result.error);
                 console.error('로그아웃 실패:', result.error);
                 updateAuthUI(); // 혹시라도 서버와의 상태가 다를 수 있으니 UI 강제 업데이트
             }
@@ -411,7 +412,7 @@ if (signupForm) {
         });
     }
 
-	// 초기 로드 시 활성 탭이 없으면 웰컴 메시지 표시
+    // 초기 로드 시 활성 탭이 없으면 웰컴 메시지 표시
     const activeTabId = getActiveTab();
     if (!activeTabId || !chatSessions[activeTabId] || chatSessions[activeTabId].length === 0) {
         if (chatMessages && welcomeMessage) {
@@ -443,48 +444,34 @@ if (signupForm) {
     }
 
     if (exportChatButton) {
-    on(exportChatButton, 'click', () => {
-        const currentTabId = getActiveTab(); // ✅ 최신 상태 보장
-        const history = chatSessions[currentTabId] || [];
+        on(exportChatButton, 'click', () => {
+            const currentTabId = getActiveTab(); // ✅ 최신 상태 보장
+            const history = chatSessions[currentTabId] || [];
 
-        if (history.length === 0) {
-            alert(getTranslation('noRecentChats'));
-            return;
-        }
+            if (history.length === 0) {
+                alert(getTranslation('noRecentChats'));
+                return;
+            }
 
-        const formattedChat = history.map(msg =>
-            `[${formatTimestamp(msg.timestamp)}] ${msg.sender === 'user' ? 'User' : getTranslation('botName')}:\n${msg.text}`
-        ).join('\n\n');
+            const formattedChat = history.map(msg =>
+                `[${formatTimestamp(msg.timestamp)}] ${msg.sender === 'user' ? 'User' : getTranslation('botName')}:\n${msg.text}`
+            ).join('\n\n');
 
-        const blob = new Blob([formattedChat], { type: 'text/plain;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `legalbot_chat_${new Date().toISOString().slice(0, 10)}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-    });
-}
+            const blob = new Blob([formattedChat], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `legalbot_chat_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        });
+    }
 
     // 모든 대화 삭제 버튼 (공통)
     if (clearChatButton) {
         on(clearChatButton, 'click', () => {
-            if (confirm(getTranslation('confirmClearAllChats'))) {
-                chatSessions = {};
-                openTabs = {};
-                setActiveTab(null);
-                saveTabState();
-                tabBar.innerHTML = '';
-                chatMessages.innerHTML = '';
-                welcomeMessage.classList.remove('hidden');
-                chatMessages.appendChild(welcomeMessage);
-                sendButton.disabled = false;
-
-                // 세션 타이틀 초기화 및 사이드바 목록 갱신
-                clearChatSessionTitles();
-                renderRecentChats(getChatSessionList());
-            }
+            clearAllChats();  // 🔥 이 한 줄이면 모든 세션/탭/스토리지 다 지워짐
         });
     }
 
@@ -525,3 +512,22 @@ if (signupForm) {
         }
     });
 });
+
+window.openDeleteModal = openDeleteModal;
+
+const languageBtn = document.querySelector('.language-btn');
+const languageDropdown = document.getElementById('languageDropdown');
+
+if (languageBtn && languageDropdown) {
+    languageBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 다른 클릭 이벤트 무시
+        languageDropdown.classList.toggle('show'); // CSS에서 display 제어
+    });
+
+    // 외부 클릭 시 닫기
+    document.addEventListener('click', (e) => {
+        if (!languageDropdown.contains(e.target) && !languageBtn.contains(e.target)) {
+            languageDropdown.classList.remove('show');
+        }
+    });
+}

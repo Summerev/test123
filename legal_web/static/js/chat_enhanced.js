@@ -124,16 +124,16 @@ class EnhancedChatManager {
                         contract_type: data.contract_type,
                         chunk_count: data.chunk_count
                     };
-                    
+
                     this.updateDocumentStatus();
                     this.showMessage('system', `✅ ${data.message}`);
-                    
+
                     if (data.contract_type) {
                         this.showMessage('system', `🎯 감지된 계약서 유형: ${data.contract_type}`);
                     }
-                    
+
                     this.showMessage('system', `📊 ${data.chunk_count}개 조항으로 분할 완료`);
-                    
+
                 } else {
                     // 기존 방식: 텍스트만 추출
                     this.showMessage('system', `📝 텍스트 추출 완료 (${data.text.length}자)`);
@@ -155,7 +155,7 @@ class EnhancedChatManager {
     async sendMessage() {
         const input = document.getElementById('chatInput');
         const message = input.value.trim();
-        
+
         if (!message) return;
 
         // 사용자 메시지 표시
@@ -189,7 +189,7 @@ class EnhancedChatManager {
             if (response.ok) {
                 // AI 응답 표시
                 this.showMessage('assistant', data.reply);
-                
+
                 // RAG 정보 표시
                 if (data.rag_used) {
                     this.showRAGInfo(data);
@@ -209,7 +209,7 @@ class EnhancedChatManager {
     showMessage(type, content) {
         const messagesContainer = document.getElementById('chatMessages');
         if (!messagesContainer) return;
-        
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
 
@@ -242,36 +242,36 @@ class EnhancedChatManager {
     showRAGInfo(data) {
         const infoDiv = document.createElement('div');
         infoDiv.className = 'rag-info';
-        
+
         let infoContent = `<div class="rag-info-header">🔍 RAG 검색 정보</div>`;
-        
+
         if (data.search_info) {
             infoContent += `<div class="search-info">${data.search_info}</div>`;
         }
-        
+
         if (data.document_title) {
             infoContent += `<div class="document-info">📄 문서: ${data.document_title}</div>`;
         }
-        
+
         if (data.contract_type) {
             infoContent += `<div class="contract-type">📋 유형: ${data.contract_type}</div>`;
         }
-        
+
         if (data.search_results && data.search_results.length > 0) {
             infoContent += `<div class="search-results">
                 <details>
                     <summary>검색된 조항들 (${data.search_results.length}개)</summary>
                     <ul>`;
-            
+
             data.search_results.forEach((result, index) => {
                 infoContent += `<li>${result.method} (점수: ${result.score?.toFixed(1) || 'N/A'})</li>`;
             });
-            
+
             infoContent += `</ul></details></div>`;
         }
-        
+
         infoDiv.innerHTML = infoContent;
-        
+
         const messagesContainer = document.getElementById('chatMessages');
         messagesContainer.appendChild(infoDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -279,7 +279,7 @@ class EnhancedChatManager {
 
     updateDocumentStatus() {
         const statusDiv = document.getElementById('documentStatus') || this.createDocumentStatusDiv();
-        
+
         if (this.currentDocument) {
             statusDiv.innerHTML = `
                 <div class="document-status active">
@@ -295,7 +295,7 @@ class EnhancedChatManager {
                     </div>
                 </div>
             `;
-            
+
             // 이벤트 리스너 재연결
             document.getElementById('clearDocumentBtn')?.addEventListener('click', () => this.clearCurrentDocument());
             statusDiv.style.display = 'block';
@@ -314,12 +314,12 @@ class EnhancedChatManager {
         const statusDiv = document.createElement('div');
         statusDiv.id = 'documentStatus';
         statusDiv.className = 'document-status-container';
-        
+
         const chatContainer = document.querySelector('.chat-container');
         if (chatContainer) {
             chatContainer.insertBefore(statusDiv, chatContainer.firstChild);
         }
-        
+
         return statusDiv;
     }
 
@@ -329,7 +329,7 @@ class EnhancedChatManager {
             this.currentDocument = null;
             this.updateDocumentStatus();
             this.showMessage('system', '📄 문서가 초기화되었습니다. 일반 채팅 모드로 전환됩니다.');
-            
+
             // API 호출 시도 (실패해도 무시)
             try {
                 await fetch('/chatbot/api/clear-document/', {
@@ -379,7 +379,7 @@ class EnhancedChatManager {
     getTypeLabel(type) {
         const labels = {
             'user': '사용자',
-            'assistant': 'AI 어시스턴트', 
+            'assistant': 'AI 어시스턴트',
             'system': '시스템'
         };
         return labels[type] || type;
@@ -388,21 +388,21 @@ class EnhancedChatManager {
     setLoading(isLoading) {
         const sendButton = document.getElementById('sendButton');
         const chatInput = document.getElementById('chatInput');
-        
+
         if (sendButton) {
             sendButton.disabled = isLoading;
             sendButton.textContent = isLoading ? '처리중...' : '전송';
         }
-        
+
         if (chatInput) {
             chatInput.disabled = isLoading;
         }
     }
 
     getCSRFToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-               '';
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+            '';
     }
 
     updateRagStatus() {
@@ -412,27 +412,8 @@ class EnhancedChatManager {
 }
 
 // 페이지 로드 시 채팅 매니저 초기화 (안전한 방식)
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        window.chatManager = new EnhancedChatManager();
-        
-        // 예시 프롬프트 클릭 이벤트
-        document.querySelectorAll('.example-prompt').forEach(prompt => {
-            prompt.addEventListener('click', () => {
-                const text = prompt.getAttribute('data-prompt-text');
-                const chatInput = document.getElementById('chatInput');
-                if (chatInput) {
-                    chatInput.value = text;
-                }
-            });
-        });
-        
-        console.log('✅ RAG 채팅 매니저 초기화 완료');
-    } catch (error) {
-        console.error('❌ 채팅 매니저 초기화 실패:', error);
-        // 실패해도 기존 방식으로 동작하도록
-    }
-});
+
+
 
 // 전역 함수들 (기존 코드와의 호환성)
 function sendMessage() {
