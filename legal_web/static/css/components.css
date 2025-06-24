@@ -16,13 +16,8 @@
   border-color: var(--primary-accent);
 }
 
-.features-menu,
-.language-selector {
-  position: relative;
-}
 
-.features-btn,
-.language-btn {
+.features-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -36,12 +31,11 @@
   transition: all 0.2s ease;
   font-size: 1rem;
   white-space: nowrap;
-  min-width: 200px;
-  justify-content: center;
+  min-width: auto !important;
+  justify-content: flex-start !important;
 }
 
-.features-btn:hover,
-.language-btn:hover {
+.features-btn:hover {
   background: var(--button-hover-bg);
   color: var(--button-hover-text);
 }
@@ -61,6 +55,10 @@
   transform: translateY(-10px);
   transition: all 0.2s ease;
   z-index: 1000;
+}
+
+.language-dropdown.show {
+  display: block;
 }
 
 .features-dropdown.active,
@@ -90,11 +88,6 @@
   border-bottom: none;
 }
 
-.auth-buttons {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
 
 .btn-login {
   color: var(--text-color);
@@ -113,7 +106,8 @@
   color: var(--button-hover-text);
 }
 
-.btn-signup, .btn-signout {
+.btn-signup,
+.btn-signout {
   background: var(--primary-accent);
   color: var(--primary-accent-text);
   text-decoration: none;
@@ -251,7 +245,7 @@ body.dark-mode .social-btn:hover {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 1000;
@@ -263,8 +257,10 @@ body.dark-mode .social-btn:hover {
 .modal-overlay.active {
   opacity: 1;
   visibility: visible;
+  display: flex;
 }
 
+/* modal (모달 내용) */
 .modal {
   background: var(--modal-bg);
   color: var(--text-color);
@@ -282,6 +278,7 @@ body.dark-mode .social-btn:hover {
   transform: scale(1) translateY(0);
 }
 
+/* modal-close (모달 닫기 버튼) */
 .modal-close {
   position: absolute;
   top: 1rem;
@@ -465,7 +462,72 @@ input:checked+.slider:before {
 }
 
 body.dark-mode .mode-options-sidebar input[type='radio']:checked+label {
-  background-color: var(--primary-accent-darker); /* Dark mode selected */
+  background-color: var(--primary-accent-darker);
+  /* Dark mode selected */
   border-color: var(--primary-accent);
   color: var(--primary-accent-text);
+}
+
+#confirmDeleteModal.active {
+  display: flex !important;
+}
+
+.delete-confirm-modal {
+  background: white;
+  border-radius: 10px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.delete-confirm-modal .modal-header {
+  margin-bottom: 16px;
+}
+
+.delete-confirm-modal .modal-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #111;
+}
+
+.delete-confirm-modal .modal-body {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.delete-confirm-modal .modal-body .modal-description {
+  margin-bottom: 8px;
+}
+
+.delete-confirm-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.delete-confirm-modal .btn-cancel {
+  background: #f1f1f1;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.delete-confirm-modal .btn-confirm.danger {
+  background: #e53935;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.delete-confirm-modal .btn-confirm.danger:hover {
+  background: #d32f2f;
 }

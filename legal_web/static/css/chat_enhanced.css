@@ -149,6 +149,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -362,22 +363,8 @@
     transform: none;
 }
 
-/* 언어 선택기 */
-.language-selector {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 100;
-}
 
-.language-selector select {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: white;
-    font-size: 0.9em;
-    cursor: pointer;
-}
+
 
 /* RAG 토글 스위치 */
 .rag-toggle-container {
@@ -427,11 +414,11 @@
     border-radius: 50%;
 }
 
-.rag-toggle input:checked + .rag-slider {
+.rag-toggle input:checked+.rag-slider {
     background-color: #4CAF50;
 }
 
-.rag-toggle input:checked + .rag-slider:before {
+.rag-toggle input:checked+.rag-slider:before {
     transform: translateX(20px);
 }
 
@@ -441,40 +428,6 @@
     font-weight: 500;
 }
 
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .message {
-        margin-left: 5%;
-        margin-right: 5%;
-    }
-    
-    .user-message {
-        margin-left: 10%;
-    }
-    
-    .assistant-message {
-        margin-right: 10%;
-    }
-    
-    .chat-input-wrapper {
-        gap: 8px;
-    }
-    
-    .fileAddBtn {
-        width: 36px;
-        height: 36px;
-        font-size: 18px;
-    }
-    
-    .send-button {
-        padding: 10px 20px;
-        font-size: 14px;
-    }
-    
-    .document-info {
-        padding-left: 20px;
-    }
-}
 
 /* 로딩 애니메이션 */
 .loading-indicator {
@@ -500,14 +453,23 @@
     animation: loadingPulse 1.4s infinite ease-in-out;
 }
 
-.loading-dot:nth-child(1) { animation-delay: -0.32s; }
-.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+.loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
 
 @keyframes loadingPulse {
-    0%, 80%, 100% {
+
+    0%,
+    80%,
+    100% {
         transform: scale(0);
         opacity: 0.5;
     }
+
     40% {
         transform: scale(1);
         opacity: 1;
@@ -584,37 +546,4 @@
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
     background: #a1a1a1;
-}
-
-/* 다크 모드 지원 */
-@media (prefers-color-scheme: dark) {
-    .document-status-container {
-        background: #2c3e50;
-        border-color: #34495e;
-        color: #ecf0f1;
-    }
-    
-    .document-status.active {
-        background: linear-gradient(135deg, #27ae60, #2980b9);
-    }
-    
-    .rag-info {
-        background: linear-gradient(135deg, #8e44ad, #3498db);
-        border-color: #9b59b6;
-        color: #ecf0f1;
-    }
-    
-    .message-content code {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    
-    .chat-input {
-        background: #34495e;
-        border-color: #7f8c8d;
-        color: #ecf0f1;
-    }
-    
-    .chat-input::placeholder {
-        color: #bdc3c7;
-    }
 }

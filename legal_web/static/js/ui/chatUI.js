@@ -1,6 +1,6 @@
 // static/js/ui/chatUI.js (수정된 내용)
 
-import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelpers.js';
+import { $, $$, on, addClass, removeClass, escapeRegExp, createElement } from '../utils/domHelpers.js';
 import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
 import {
     formatTimestamp,
@@ -13,7 +13,7 @@ import {
 import { generateSessionId } from '../main.js';
 import { createTab, renderTabBar, switchTab, updateTabTitle } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
-import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
+import { openTabs, chatSessions, setActiveTab, saveTabState } from '../state/chatTabState.js';
 import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
 
 let attachments = [];
@@ -65,15 +65,15 @@ export function initChatUI() {
     // 필요한 다른 채팅 UI 관련 초기화 로직도 여기에 추가
     initChatInputAutoResize(); // 입력창 자동 높이 조절 초기화
     // initSendMessageEvents(); // 메시지 전송 이벤트는 파일 업로드 후 활성화될 때 붙이는 것이 논리적입니다.
-                               // 이 부분은 나중에 '활성화' 시점에 붙이도록 변경하는 것을 고려해보세요.
-                               // 지금은 activateChatInput(true) 될 때 전송 버튼이 활성화되므로
-                               // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
+    // 이 부분은 나중에 '활성화' 시점에 붙이도록 변경하는 것을 고려해보세요.
+    // 지금은 activateChatInput(true) 될 때 전송 버튼이 활성화되므로
+    // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
 }
 
 export function generateMessageId() {
-	messageIdCounter++;
-	localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
-	return `msg-${Date.now()}-${messageIdCounter}`;
+    messageIdCounter++;
+    localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
+    return `msg-${Date.now()}-${messageIdCounter}`;
 }
 
 export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false, isTemporary = false) {
@@ -88,8 +88,8 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
         if (existingMessage) {
             console.log('기존 메시지 업데이트:', messageId);
             // 기존 메시지의 내용만 업데이트
-            const messageTextElement = existingMessage.querySelector('.message-content') || 
-                                     existingMessage.querySelector('.message-text');
+            const messageTextElement = existingMessage.querySelector('.message-content') ||
+                existingMessage.querySelector('.message-text');
             if (messageTextElement) {
                 messageTextElement.innerHTML = messageText.replace(/\n/g, '<br>');
             }
@@ -99,7 +99,7 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
 
     const messageElement = document.createElement('div');
     messageElement.classList.add('chat-message');
-    
+
     if (messageId) {
         messageElement.dataset.messageId = messageId;
     }
@@ -112,19 +112,19 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
 
     if (sender === 'user') {
         messageElement.classList.add('user-message');
-        
+
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-text');
         messageContent.textContent = messageText;
         messageBubble.appendChild(messageContent);
-        
+
         if (timestamp) {
             const timestampSpan = document.createElement('div');
             timestampSpan.classList.add('message-time');
             timestampSpan.textContent = formatTimestamp(timestamp);
             messageBubble.appendChild(timestampSpan);
         }
-        
+
     } else if (sender === 'bot') {
         messageElement.classList.add('bot-message');
 
@@ -225,11 +225,11 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
                 Array.from(node.childNodes).forEach(highlightTerms);
             }
         }
-        
+
         Array.from(tempDiv.childNodes).forEach(highlightTerms);
         messageContentSpan.innerHTML = tempDiv.innerHTML;
         messageBubble.appendChild(messageContentSpan);
-        
+
         if (timestamp) {
             const timestampSpan = document.createElement('div');
             timestampSpan.classList.add('message-time');
@@ -248,15 +248,15 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
             `;
             messageBubble.appendChild(feedbackDiv);
         }
-        
+
     } else if (sender === 'system') {
         messageElement.classList.add('system-message');
-        
+
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-text');
         messageContent.textContent = messageText;
         messageBubble.appendChild(messageContent);
-        
+
         if (timestamp) {
             const timestampSpan = document.createElement('div');
             timestampSpan.classList.add('message-time');
@@ -266,19 +266,19 @@ export function addMessageToUI(messageText, sender, messageId, timestamp, isHist
     }
 
     messageElement.appendChild(messageBubble);
-    
+
     // 메시지 컨테이너에 추가하기 전에 웰컴 메시지가 숨겨져 있는지 확인
     if (welcomeMessage && !welcomeMessage.classList.contains('hidden')) {
         welcomeMessage.classList.add('hidden');
     }
-    
+
     chatMessagesContainer.appendChild(messageElement);
 
     // 스크롤을 맨 아래로 이동 (히스토리 로딩이 아닌 경우에만)
     if (!isHistory) {
         chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
     }
-    
+
     console.log('메시지 UI 추가 완료:', messageId, sender, messageText.substring(0, 50) + '...');
     return messageElement;
 }
@@ -336,10 +336,10 @@ export function renderRecentChats(chatList) {
     chatList.forEach(chat => {
         const li = document.createElement('li');
         li.className = 'chat-item';
-        li.dataset.chatId = chat.id;
+        li.dataset.chatId = chat.id; // sessionId로 chat.id 할당
         li.textContent = chat.title;
 
-        // 점3개 버튼
+        // 점 3개 버튼
         const btn = document.createElement('button');
         btn.className = 'menu-btn';
         btn.textContent = '⋯';
@@ -375,11 +375,8 @@ export function renderRecentChats(chatList) {
     });
 }
 
-function closeAllContextMenus() {
-    document.querySelectorAll('.context-menu').forEach(m => m.remove());
-}
-
-function createContextMenu(id, title) {
+// context-menu 생성 시 삭제 버튼 이벤트에 sessionId 추가
+function createContextMenu(sessionId, title) {
     const menu = document.createElement('div');
     menu.className = 'context-menu';
 
@@ -387,7 +384,7 @@ function createContextMenu(id, title) {
     rename.textContent = '이름 바꾸기';
     rename.addEventListener('click', e => {
         e.stopPropagation();
-        handleRename(id, title);
+        handleRenameInline(sessionId);  // 여기로 연결
         closeAllContextMenus();
     });
 
@@ -395,9 +392,9 @@ function createContextMenu(id, title) {
     del.className = 'delete-btn';
     del.textContent = '삭제';
     del.addEventListener('click', e => {
-
         e.stopPropagation();
-        handleDelete(id);
+        window._currentDeleteSessionId = sessionId; // sessionId를 전역 변수에 저장
+        openDeleteModal(sessionId); // 삭제 모달 호출
         closeAllContextMenus();
     });
 
@@ -441,7 +438,7 @@ export function createNewSession() {
         chatMessages.innerHTML = '';
         welcomeMessage.classList.remove('hidden');
         chatMessages.appendChild(welcomeMessage);
-        
+
         // 파일 업로드 폼 강제 리셋
         if (forceResetWelcomeMessage) {
             forceResetWelcomeMessage();
@@ -452,6 +449,7 @@ export function createNewSession() {
     return sessionId;
 }
 
+<<<<<<< HEAD
 function handleRename(id, oldTitle) {
     const newTitle = prompt('새 이름 입력', oldTitle);
     if (newTitle) {
@@ -461,26 +459,179 @@ function handleRename(id, oldTitle) {
         renderRecentChats(getChatSessionList());
         // 3) 탭 UI 타이틀 동기화
         updateTabTitle(id, newTitle);
+=======
+function handleRenameInline(sessionId) {
+    const sidebarItem = document.querySelector(`.chat-item[data-chat-id="${sessionId}"]`);
+    if (!sidebarItem) return;
+
+    const currentTitle = sidebarItem.firstChild.textContent.trim();
+
+    const input = createElement('input', 'rename-input');
+    input.value = currentTitle;
+    sidebarItem.replaceChild(input, sidebarItem.firstChild);
+    input.focus();
+
+    input.addEventListener('blur', () => applyRename(sessionId, input, sidebarItem));
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') cancelRename(input, sessionId, currentTitle, sidebarItem);
+    });
+}
+
+function cancelRename(input, sessionId, originalTitle, sidebarItem) {
+    const title = originalTitle || (chatSessions[sessionId] ? chatSessions[sessionId].title : '제목 없음');
+
+    sidebarItem.innerHTML = '';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'chat-title';
+    titleSpan.textContent = title;
+    sidebarItem.appendChild(titleSpan);
+
+    const btn = document.createElement('button');
+    btn.className = 'menu-btn';
+    btn.textContent = '⋯';
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        closeAllContextMenus();
+        const menu = createContextMenu(sessionId, title);
+        const rect = sidebarItem.getBoundingClientRect();
+        menu.style.position = 'absolute';
+        menu.style.top = `${rect.top}px`;
+        menu.style.left = `${rect.right + 4}px`;
+        menu.style.zIndex = '9999';
+        document.body.appendChild(menu);
+    });
+    sidebarItem.appendChild(btn);
+}
+
+export function removeTabUI(sessionId) {
+    const tab = document.querySelector(`.chat-tab[data-session-id="${sessionId}"]`);
+    if (tab) tab.remove();
+}
+
+window.openDeleteModal = openDeleteModal;
+
+
+export function openDeleteModal(sessionId) {
+    const modalOverlay = document.getElementById('confirmDeleteModal');
+    if (!modalOverlay) {
+        console.error('삭제 모달을 찾을 수 없습니다!');
+        return;
+    }
+
+    // 모달을 보이도록 설정
+    modalOverlay.classList.add('active');
+    window._currentDeleteSessionId = sessionId; // 삭제할 세션 ID 저장
+}
+
+export function closeDeleteModal() {
+    const modalOverlay = document.getElementById('confirmDeleteModal');
+    if (modalOverlay) {
+        modalOverlay.classList.remove('active');
+>>>>>>> 8da8328 (css오류수정 및 기능 추가)
     }
 }
 
+window.closeDeleteModal = () => {
+    const modal = document.getElementById('confirmDeleteModal');
+    if (modal) modal.style.display = 'none';
+};
 
-function handleDelete(id) {
-    if (confirm('정말 삭제하시겠습니까?')) {
-        // 1) 저장소에서 삭제
-        deleteChatSession(id);
+function handleRenameSidebarInline(sessionId, button) {
+    const li = document.querySelector(`.chat-item[data-chat-id="${sessionId}"]`);
+    if (!li) return;
+    const currentTitle = li.childNodes[0].textContent.trim();
+    const input = createElement('input', 'rename-input');
+    input.value = currentTitle;
+    const oldTextNode = li.childNodes[0];
+    li.insertBefore(input, oldTextNode);
+    li.removeChild(oldTextNode);
+    input.focus();
+    input.addEventListener('blur', () => applyRenameSidebar(input, currentTitle, li, sessionId));
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') cancelRenameSidebar(input, currentTitle, li);
+    });
+}
+function applyRename(sessionId, input, sidebarItem) {
+    const newTitle = input.value.trim();
+    if (!newTitle) return cancelRename(input, sessionId, null, sidebarItem);
 
-        // 2) 사이드바 갱신 (deleteChatSession 내부에서 이미 수행됨)
-        // renderRecentChats(getChatSessionList());
+    // 상태 업데이트
+    if (chatSessions[sessionId]) chatSessions[sessionId].title = newTitle;
+    if (openTabs[sessionId]) openTabs[sessionId].title = newTitle;
+    saveChatSessionInfo(sessionId, { titleText: newTitle });
+    saveTabState();
 
-        // 3) 탭도 닫아주기 (deleteChatSession 내부에서 이미 처리됨)
-        // const remainingTabIds = Object.keys(openTabs);
-        // const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
-        // switchTab(fallbackId);
+    // 사이드바 UI 갱신
+    sidebarItem.innerHTML = ''; // 기존 요소 제거
+
+    const titleSpan = document.createElement('span');  // ✅ span으로 감싸야 안정적
+    titleSpan.className = 'chat-title';
+    titleSpan.textContent = newTitle;
+    sidebarItem.appendChild(titleSpan);
+
+    // 점 3개 버튼 다시 붙이기
+    const btn = document.createElement('button');
+    btn.className = 'menu-btn';
+    btn.textContent = '⋯';
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        closeAllContextMenus();
+        const menu = createContextMenu(sessionId, newTitle);
+        const rect = sidebarItem.getBoundingClientRect();
+        menu.style.position = 'absolute';
+        menu.style.top = `${rect.top}px`;
+        menu.style.left = `${rect.right + 4}px`;
+        menu.style.zIndex = '9999';
+        document.body.appendChild(menu);
+    });
+    sidebarItem.appendChild(btn);
+
+    // 탭 UI 갱신
+    const tab = document.querySelector(`.chat-tab[data-session-id="${sessionId}"]`);
+    if (tab) {
+        const titleSpan = tab.querySelector('.tab-title');
+        if (titleSpan) {
+            titleSpan.textContent = newTitle.length > 12 ? newTitle.slice(0, 12) + '...' : newTitle;
+        }
+    }
+
+    renderRecentChats(getChatSessionList());
+}
+
+// 모달 삭제 버튼에 이벤트 연결
+export function initDeleteModalEvents() {
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const cancelBtn = document.querySelector('#confirmDeleteModal .btn-cancel');
+
+    if (confirmBtn && cancelBtn) {
+        confirmBtn.addEventListener('click', () => {
+            if (window._currentDeleteSessionId) {
+                deleteChatSession(window._currentDeleteSessionId);  // 세션 삭제
+                closeDeleteModal(); // 모달 닫기
+                window._currentDeleteSessionId = null; // 세션 ID 초기화
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            closeDeleteModal(); // 취소 버튼 클릭 시 모달 닫기
+        });
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    renderRecentChats(getChatHistory());
-    document.addEventListener('click', closeAllContextMenus);
+function closeAllContextMenus() {
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+}
+
+// 기존 코드에서 버튼 클릭 시 호출되는 부분에서 이 함수를 사용
+const del = document.createElement('button');
+del.className = 'delete-btn';
+del.textContent = '삭제';
+del.addEventListener('click', e => {
+    e.stopPropagation();
+    window._currentDeleteSessionId = sessionId; // sessionId를 전역 변수에 저장
+    openDeleteModal(sessionId); // 삭제 모달 호출
+    closeAllContextMenus(); // 모든 context-menu 닫기
 });
