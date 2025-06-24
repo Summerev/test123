@@ -1,5 +1,5 @@
 // static/js/main.js
-import { $, $$, on } from './utils/domHelpers.js';
+import { $, $$, on, getCookie } from './utils/domHelpers.js';
 import { loginUser, signupUser, logoutUser, getCurrentUser, isLoggedIn } from './api/authAPI.js';
 import {
     getTranslation, applyTranslations, changeLanguage,
@@ -33,6 +33,8 @@ import { createTab, renderTabBar, restoreTabs, } from './ui/chatTabUI.js'
 import { handleFeedbackClick, handleFeedbackSubmit, } from './logic/chatProcessor.js';
 import { saveTabState, closeTabState, getActiveTab, setActiveTab, chatSessions, openTabs } from './state/chatTabState.js';
 import { initFileUpload } from './ui/fileUpLoadUI.js';
+
+
 
 // --- DOM Element Selections (변경 없음) ---
 const chatInput = $('#chatInput');
@@ -116,39 +118,71 @@ export function handleSendMessage() {
 
 
 async function processUserMessage(text, tabId) {
-    // 응답 텍스트 생성 (나중에 실제 AI API로 교체)
-    const responseText = `"${text}"에 대한 기본 설명입니다. 이 내용을 더 자세히 설명해드릴까요?`;
+    // 1. "AI가 답변 중..." 임시 메시지 표시
+    const thinkingMessageElement = addMessageToUI('AI가 답변을 생성 중입니다...', 'bot', generateMessageId(), new Date().toISOString(), false, true);
 
-    // 봇 메시지 생성 (고유 ID 포함)
-    const botMsg = {
-        id: generateMessageId(), // 고유 메시지 ID 생성
-        sender: 'bot',
-        text: responseText,
-        timestamp: new Date().toISOString()
-    };
+    try {
+        // 2. 백엔드 API 호출
+        const response = await fetch('/chatbot/chat-api/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') 
+            },
+            body: JSON.stringify({
+                message: text,
+                session_id: tabId,
+                docType: openTabs[tabId]?.docType || 'terms', 
+                history: (chatSessions[tabId] || []).slice(0, -1), 
+                language: getCurrentLanguage() 
+            })
+        });
 
-    const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
-    
-    if (!chatSessions[activeTabId]) {
-        chatSessions[activeTabId] = [];
+      // 3. 응답을 받으면, 저장해둔 임시 메시지 요소를 바로 삭제합니다.
+        //    이제 getElementById로 찾을 필요가 없습니다.
+        if (thinkingMessageElement) {
+            thinkingMessageElement.remove();
+        }
+
+        // 4. 응답 상태에 따른 처리
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: '서버로부터 응답을 받지 못했습니다.' }));
+            // 에러 메시지를 새로 추가
+            addMessageToUI(`❌ 오류: ${errorData.error || '알 수 없는 오류'}`, 'bot', generateMessageId(), new Date().toISOString());
+            return; // 함수 종료
+        }
+
+        const data = await response.json();
+        const botReply = data.reply;
+
+        // 5. 실제 AI 답변을 새로운 메시지로 화면에 추가
+        const botMsg = {
+            id: generateMessageId(), // 새로운 메시지이므로 새 ID 생성
+            sender: 'bot',
+            text: botReply,
+            timestamp: new Date().toISOString()
+        };
+        
+        // UI에 새 메시지 추가
+        addMessageToUI(botMsg.text, botMsg.sender, botMsg.id, botMsg.timestamp);
+        
+        // 6. 세션 데이터(localStorage)에 실제 답변 저장
+        chatSessions[tabId].push(botMsg);
+        saveTabState();
+
+    } catch (error) {
+        // 7. 네트워크 오류 등 fetch 자체의 실패 처리
+        // catch 블록에 오기 전에 임시 메시지를 찾아서 삭제 시도
+        const thinkingMessageElement = document.getElementById(thinkingMessageId);
+        if (thinkingMessageElement) {
+            thinkingMessageElement.remove();
+        }
+        addMessageToUI(`❌ 네트워크 오류: ${error.message}`, 'bot', generateMessageId(), new Date().toISOString());
+        console.error('Error processing user message:', error);
     }
-
-    // 세션에 봇 메시지 저장
-    chatSessions[activeTabId].push(botMsg);
-    
-    // UI에 봇 메시지 추가 (addMessageToUI 함수 시그니처에 맞게 호출)
-    addMessageToUI(
-        botMsg.text,         // messageText
-        botMsg.sender,       // sender
-        botMsg.id,           // messageId
-        botMsg.timestamp,    // timestamp
-        false,               // isHistory
-        false                // isTemporary
-    );
-    
-    // 상태 저장
-    saveTabState();
 }
+
+
 
 // --- Tab Rendering (변경 없음) ---
 

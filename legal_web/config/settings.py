@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from openai import OpenAI, APIError
+
 
 # 기본 경로 설정
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,6 +15,13 @@ SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key-if-not-set")
 
 # 디버그 환경변수
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+
 
 # DEBUG가 False일 때, Django 애플리케이션이 응답할 수 있는 호스트를 정의. 개발 환경에서는 'localhost'와 '127.0.0.1'을 포함.
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']

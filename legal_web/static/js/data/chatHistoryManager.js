@@ -233,3 +233,9 @@ export function clearChatSessionTitles() {
     localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
     // openTabs 및 chatSessions 초기화는 clearAllChats에서 처리
 }
+
+
+
+export function getChatSessionInfo(sessionId) {
+    return chat_session_info[sessionId] || null;
+}

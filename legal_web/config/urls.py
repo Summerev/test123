@@ -13,7 +13,8 @@ urlpatterns = [
     path('chatbot/', include('apps.chatbot.urls')),
     path('accounts/', include('apps.accounts.urls')),
     path('admin-ui/', include('apps.admin_ui.urls')),
-    path('rag/', include('apps.rag.urls')),
+    path('api/documents/', include('apps.documents.urls')),
+    path('api/rag/', include('apps.rag.urls')),
 ]
 
 # DEBUG 모드일 때만 Debug Toolbar URL을 추가.

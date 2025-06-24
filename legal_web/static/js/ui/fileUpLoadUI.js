@@ -1,11 +1,13 @@
 // legal_web/static/js/ui/fileUpLoadUI.js (정리된 최종 버전)
 
+import { getCookie } from '../utils/domHelpers.js';
 import { createNewSession } from '../ui/chatUI.js';
 import { saveChatSessionInfo, getChatSessionList, setChatEnabled, addMessageToChatAndHistory  } from '../data/chatHistoryManager.js';
 import { renderRecentChats, addMessageToUI } from './chatUI.js';
 import { getActiveTab, chatSessions, openTabs } from '../state/chatTabState.js';
 import { renderTabBar } from './chatTabUI.js';
 import { saveTabState } from '../state/chatTabState.js';
+import { getCurrentLanguage } from '../data/translation.js';
 
 // DOM 요소 참조
 let welcomeMessageDiv;
@@ -98,7 +100,7 @@ async function handleFile(file) {
     const uploadingMessage = {
         id: 'upload-' + Date.now(),
         sender: 'bot',
-        text: `파일 '${fileName}' 업로드 중...`,
+        text: `파일 '${fileName}' 업로드 중 입니다.`,
         timestamp: new Date().toISOString()
     };
     
@@ -120,7 +122,7 @@ async function handleFile(file) {
     
     try {
         // 실제 파일 업로드 수행
-        const uploadResult = await uploadFileToServer(file);
+        const uploadResult = await uploadFileToServer(file, selectedDocType, currentTabId);
         
         if (uploadResult.success) {
             console.log('파일 업로드 성공');
@@ -130,9 +132,11 @@ async function handleFile(file) {
 
             // 성공 메시지 생성
             const successMessage = {
-                id: uploadingMessage.id, // 같은 ID 사용하여 교체
+                id: uploadingMessage.id,
                 sender: 'bot',
-                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n${uploadResult.text ? '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!' : '💬 이 문서에 대해 질문해보세요!'}`,
+                // uploadResult.text (요약문)가 있으면, 그 내용을 직접 메시지에 포함시킵니다.
+                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n` + 
+                    `${uploadResult.text ? uploadResult.text : '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!'}`,
                 timestamp: new Date().toISOString()
             };
             
@@ -450,52 +454,41 @@ export function initFileUpload() {
     });
 }
 
-/**
+
+
+ /**
  * 서버에 파일을 업로드하고 결과를 반환
- * 지금은 /chatbot/upload-file/에 연결됨 
+ * 문서 유형(docType)에 따라 다른 API 엔드포인트를 호출
  * 
- * @param {File} file - 업로드할 파일 객체 (예: 사용자가 선택한 .pdf, .docx 등)
+ * @param {File} file - 업로드할 파일 객체
+ * @param {string} docType - 문서 유형 ('terms' 또는 'contract')
+ * @param {string} sessionId - 현재 채팅 세션 ID
  * @returns {Promise<Object>} 서버 응답 결과 객체
- * @returns {boolean} return.success - 업로드 성공 여부
- * @returns {string} [return.text] - 서버에서 반환한 텍스트 (예: 추출된 문서 내용)
- * @returns {string} [return.message] - 업로드 성공 메시지
- * @returns {string} [return.error] - 실패 시 에러 메시지
  */
-async function uploadFileToServer(file) {
+async function uploadFileToServer(file, docType, sessionId) {
     try {
-        console.log('서버로 파일 업로드 시작:', file.name);
-        
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('doc_type', docType);
+        formData.append('session_id', sessionId);
+        formData.append('language', getCurrentLanguage());
 
-        const response = await fetch('/chatbot/upload-file/', {
+        // 모든 문서 유형을 통합된 엔드포인트로 처리
+        const response = await fetch('/api/documents/analyze/', {
             method: 'POST',
-            body: formData
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData,
         });
 
-        console.log('서버 응답 상태:', response.status);
+        const data = await response.json();
 
-        if (response.ok) {
-            const data = await response.json();
-            console.log('파일 업로드 성공:', data);
-            return { 
-                success: true, 
-                text: data.text || '', 
-                message: data.message || '파일 업로드가 완료되었습니다.' 
-            };
+        if (!response.ok) {
+            return { success: false, error: data.error || `서버 오류 (${response.status})` };
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('파일 업로드 실패:', response.status, errorData);
-            return { 
-                success: false, 
-                error: errorData.error || `서버 오류 (${response.status}): ${response.statusText}` 
-            };
+            return { success: true, text: data.summary || data.text, message: data.message || "분석이 완료되었습니다." };
         }
     } catch (error) {
         console.error('파일 업로드 중 네트워크 오류:', error);
-        return { 
-            success: false, 
-            error: `네트워크 오류: ${error.message}` 
-        };
+        return { success: false, error: `네트워크 오류: ${error.message}` };
     }
 }
