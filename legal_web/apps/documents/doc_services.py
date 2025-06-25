@@ -51,7 +51,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
         document_text = doc_retriever.get_document_text(uploaded_file)
         if not document_text:
             raise ValueError("문서에서 텍스트를 추출할 수 없습니다.")
-        doc_type_name = "이용약관" if doc_type == "terms" else "계약서"
+        doc_type_name = "이용약관"
         print(f"[1단계 완료] 텍스트 추출 성공 (총 글자 수: {len(document_text)}자).")
 
         # --- 2. 요약 및 위험 분석 ---
@@ -67,7 +67,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
             print("  - [Map 단계] 각 청크를 개별적으로 요약합니다...")
             individual_summaries = []
             for i, chunk in enumerate(summary_chunks):
-                summary_prompt = doc_prompt_manager.get_summarize_chunk_prompt(chunk, doc_type_name)
+                summary_prompt = doc_prompt_manager.get_summarize_chunk_terms_prompt(chunk, doc_type_name)
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo", messages=[{"role": "user", "content": summary_prompt}],
                     max_tokens=300, temperature=0.3
@@ -84,7 +84,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
                 # 10개씩 묶어서 처리
                 for i in range(0, len(current_summaries), 10):
                     batch = current_summaries[i:i+10]
-                    reduce_prompt = doc_prompt_manager.get_combine_summaries_prompt(batch, doc_type_name)
+                    reduce_prompt = doc_prompt_manager.get_combine_summaries_terms_prompt(batch, doc_type_name)
                     intermediate_summary = client.chat.completions.create(
                         model="gpt-3.5-turbo", messages=[{"role": "user", "content": reduce_prompt}],
                         max_tokens=1500, temperature=0.5
@@ -97,7 +97,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
 
             # --- 2-3. 위험 요소 분석 ---
             print("  - [위험 요소 분석 시작]...")
-            risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_prompt(document_text)
+            risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_terms_prompt(document_text)
             risk_text_ko = client.chat.completions.create(
                 model="gpt-3.5-turbo", messages=[{"role": "user", "content": risk_text_ko_prompt}],
                 max_tokens=1000, temperature=0.3
