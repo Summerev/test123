@@ -449,17 +449,6 @@ export function createNewSession() {
     return sessionId;
 }
 
-<<<<<<< HEAD
-function handleRename(id, oldTitle) {
-    const newTitle = prompt('새 이름 입력', oldTitle);
-    if (newTitle) {
-        // 1) 타이틀 저장소에 반영
-        saveChatSessionInfo(id, { titleText: newTitle });
-        // 2) 사이드바 목록 갱신
-        renderRecentChats(getChatSessionList());
-        // 3) 탭 UI 타이틀 동기화
-        updateTabTitle(id, newTitle);
-=======
 function handleRenameInline(sessionId) {
     const sidebarItem = document.querySelector(`.chat-item[data-chat-id="${sessionId}"]`);
     if (!sidebarItem) return;
@@ -529,7 +518,6 @@ export function closeDeleteModal() {
     const modalOverlay = document.getElementById('confirmDeleteModal');
     if (modalOverlay) {
         modalOverlay.classList.remove('active');
->>>>>>> 8da8328 (css오류수정 및 기능 추가)
     }
 }
 

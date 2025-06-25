@@ -237,7 +237,6 @@ function deleteChatSession(sessionId) {
     }
 }
 
-<<<<<<< HEAD
 export function clearChatSessionTitles() {
     chat_session_info = {}; // 모듈 내 변수 초기화
     localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
@@ -249,7 +248,5 @@ export function clearChatSessionTitles() {
 export function getChatSessionInfo(sessionId) {
     return chat_session_info[sessionId] || null;
 }
-=======
 // Named export로 deleteChatSession 내보내기
 export { deleteChatSession };
->>>>>>> 8da8328 (css오류수정 및 기능 추가)

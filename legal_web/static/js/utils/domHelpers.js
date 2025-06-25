@@ -66,7 +66,6 @@ export function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
-<<<<<<< HEAD
 
 /**
  * 쿠키 이름으로 쿠키 값을 가져옵니다. (CSRF 토큰 등에 사용)
@@ -88,7 +87,6 @@ export function getCookie(name) {
     }
     return cookieValue;
 }
-=======
 /**
  * 요소 생성 헬퍼 함수
  * @param {string} tag - 태그 이름 (예: 'div', 'input')
@@ -103,4 +101,3 @@ export function createElement(tag, className = '', text = '') {
     return el;
 }
 
->>>>>>> 8da8328 (css오류수정 및 기능 추가)
