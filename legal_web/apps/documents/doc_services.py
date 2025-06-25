@@ -176,8 +176,8 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
         }
 
     except Exception as e:
-        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다.")
-        return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {str(e)}")
+        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {str(e)}", "status_code": 500}
 
 # ----------------------------------------------------------
 
@@ -197,7 +197,11 @@ def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
         # --- 2. 계약서 유형 감지 및 조항별 추출 ---
         print("[2단계] 계약서 유형 감지 및 조항 추출 시작...")
         detected_contract_type, confidence, contract_type_info = doc_retriever_content.detect_contract_type(document_text)
-        print(f"  - 감지된 계약서 유형: {detected_contract_type} (신뢰도: {confidence:.2f})")
+        if confidence and isinstance(confidence, dict):
+            confidence_percentage = confidence.get('percentage', 0)
+            print(f"  - 감지된 계약서 유형: {detected_contract_type} (신뢰도: {confidence_percentage}%)")
+        else:
+            print(f"  - 감지된 계약서 유형: {detected_contract_type}")
 
         document_chunks_raw = doc_retriever_content.extract_articles_with_content(document_text)
         if not document_chunks_raw:
@@ -297,13 +301,6 @@ def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
             "chunk_count": chunk_count # 새로 추가된 필드
         }
 
-        #return {
-        #    "success": True,
-        #    "summary": f"📋 문서 요약\n\n{summary}\n\n---\n\n⚠️ 잠재적 위험 요소 식별\n\n{risk_analysis}\n\n---\n\n 유형 : {detected_contract_type}, 정보 : {contract_type_info}",
-        #    "storage_data": storage_data, # FAISS 또는 Qdrant 저장 정보 포함
-        #    "chunk_count": chunk_count
-        #}
-
     # ★★★ 바깥쪽 최종 예외 처리 블록 ★★★
     except APIError as e:
         print("\n[최종 오류 처리] OpenAI API 에러를 감지했습니다.")
@@ -319,6 +316,7 @@ def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
             "status_code": status_code
         }
 
+    # 수정된 코드:
     except Exception as e:
-        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {e}")
-        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {e}", "status_code": 500}
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {str(e)}")
+        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {str(e)}", "status_code": 500}

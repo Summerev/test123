@@ -9,21 +9,27 @@ def enhanced_korean_based_risk_analysis(client, text):
         # 위험 관련 핵심 정보 사전 추출
         risk_info = extract_detailed_risk_info(text)
 
-        # 안전한 데이터 추출 - 리스트가 아닌 경우 빈 리스트로 처리
+        # 안전한 데이터 추출 함수 개선
         def safe_join(data, default_msg="정보 없음"):
-            if isinstance(data, list) and data:
-                return ', '.join(str(item) for item in data)
-            elif isinstance(data, (str, int, float)) and data:
-                return str(data)
-            else:
+            try:
+                if isinstance(data, list) and data:
+                    return ', '.join(str(item) for item in data)
+                elif isinstance(data, (str, int, float)) and data:
+                    return str(data)
+                else:
+                    return default_msg
+            except Exception:
                 return default_msg
 
-        # 안전하게 정보 추출
-        risk_keywords = safe_join(risk_info.get('risk_keywords', []))
-        liability_terms = safe_join(risk_info.get('liability_terms', []))
-        termination_terms = safe_join(risk_info.get('termination_terms', []))
-        obligation_terms = safe_join(risk_info.get('obligation_terms', []))
-        penalty_terms = safe_join(risk_info.get('penalty_terms', []))
+        # 안전하게 정보 추출하고 str()로 한 번 더 감싸기
+        risk_keywords = str(safe_join(risk_info.get('risk_keywords', [])))
+        liability_terms = str(safe_join(risk_info.get('liability_terms', [])))
+        termination_terms = str(safe_join(risk_info.get('termination_terms', [])))
+        obligation_terms = str(safe_join(risk_info.get('obligation_terms', [])))
+        penalty_terms = str(safe_join(risk_info.get('penalty_terms', [])))
+        
+        # 텍스트도 안전하게 문자열로 변환
+        text_safe = str(text[:8000])
 
         prompt = f"""다음 계약서의 위험 요소를 매우 구체적이고 실용적으로 분석해주세요.
 
@@ -42,7 +48,7 @@ def enhanced_korean_based_risk_analysis(client, text):
 - 제재 관련: {penalty_terms}
 
 **분석할 계약서**:
-{text[:8000]}
+{text_safe}
 
 **중요한 분석 원칙**:
 - 각 위험에 대해 계약서의 **구체적인 조항 번호와 내용**을 인용하세요
@@ -95,10 +101,8 @@ def enhanced_korean_based_risk_analysis(client, text):
             # 재생성 시도
             retry_result = retry_enhanced_risk_analysis(client, text, risk_info)
             if isinstance(retry_result, dict):
-                # 재생성 결과가 딕셔너리 형태라면 그대로 반환
                 return retry_result
             else:
-                # 재생성 결과가 텍스트라면 딕셔너리로 감싸서 반환
                 return {
                     "success": True,
                     "risk_analysis_text": retry_result,
@@ -106,9 +110,9 @@ def enhanced_korean_based_risk_analysis(client, text):
                 }
 
     except APIError as e:
-        print(f"❌ 강화된 한국어 위험분석 생성 실패 (API Error): {e}")
+        print(f"❌ 강화된 한국어 위험분석 생성 실패 (API Error): {str(e)}")
         status_code = getattr(e, 'status_code', 500)
-        error_message = f"AI 모델 통신 오류 (위험분석): {e}"
+        error_message = f"AI 모델 통신 오류 (위험분석): {str(e)}"
         if getattr(e, 'code', None) == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다 (위험분석)."
         
@@ -121,14 +125,14 @@ def enhanced_korean_based_risk_analysis(client, text):
         }
         
     except Exception as e:
-        print(f"❌ 강화된 한국어 위험분석 생성 실패 (일반 오류): {e}")
+        print(f"❌ 강화된 한국어 위험분석 생성 실패 (일반 오류): {str(e)}")
         import traceback
         traceback.print_exc()
         
         fallback_text = fallback_korean_risk_analysis({})
         return {
             "success": False,
-            "error": f"한국어 위험분석 생성 중 예기치 않은 오류 발생: {e}",
+            "error": f"한국어 위험분석 생성 중 예기치 않은 오류 발생: {str(e)}",
             "status_code": 500,
             "risk_analysis_text": fallback_text
         }
@@ -145,19 +149,30 @@ def enhanced_korean_based_summary(client, text: str) -> dict:
         # 계약서에서 핵심 정보 사전 추출
         key_info = extract_key_contract_info(processed_text)
         
-        # 안전한 데이터 추출
+        # 안전한 데이터 추출 함수 개선
         def safe_join(data, default_msg="정보 없음"):
-            if isinstance(data, list) and data:
-                return ', '.join(str(item) for item in data)
-            elif isinstance(data, (str, int, float)) and data:
-                return str(data)
-            else:
+            try:
+                if isinstance(data, list) and data:
+                    return ', '.join(str(item) for item in data)
+                elif isinstance(data, (str, int, float)) and data:
+                    return str(data)
+                else:
+                    return default_msg
+            except Exception:
                 return default_msg
 
-        contract_type = key_info.get('contract_type', '미확인')
+        # 안전하게 문자열로 변환
+        contract_type = str(key_info.get('contract_type', '미확인'))
         keywords = safe_join(key_info.get('keywords', []))
         financial_terms = safe_join(key_info.get('financial_terms', []))
         period_terms = safe_join(key_info.get('period_terms', []))
+
+        # 추가 안전장치: 모든 변수를 str()로 한번 더 감싸기
+        contract_type = str(contract_type)
+        keywords = str(keywords)
+        financial_terms = str(financial_terms)
+        period_terms = str(period_terms)
+        processed_text = str(processed_text)
 
         prompt = f"""다음 계약서를 정확하고 구체적으로 분석하여 요약해주세요.
 
@@ -203,9 +218,9 @@ def enhanced_korean_based_summary(client, text: str) -> dict:
         }
 
     except APIError as e:
-        print(f"❌ 강화된 한국어 요약 생성 실패 (API Error): {e}")
+        print(f"❌ 강화된 한국어 요약 생성 실패 (API Error): {str(e)}")
         status_code = getattr(e, 'status_code', 500)
-        error_message = f"AI 모델 통신 오류 (요약): {e}"
+        error_message = f"AI 모델 통신 오류 (요약): {str(e)}"
         if getattr(e, 'code', None) == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다 (요약)."
         
@@ -218,13 +233,13 @@ def enhanced_korean_based_summary(client, text: str) -> dict:
         }
         
     except Exception as e:
-        print(f"❌ 강화된 한국어 요약 생성 실패 (일반 오류): {e}")
+        print(f"❌ 강화된 한국어 요약 생성 실패 (일반 오류): {str(e)}")
         import traceback
         traceback.print_exc()
         fallback_text = fallback_korean_summary()
         return {
             "success": False,
-            "error": f"한국어 요약 생성 중 예기치 않은 오류 발생: {e}",
+            "error": f"한국어 요약 생성 중 예기치 않은 오류 발생: {str(e)}",
             "status_code": 500,
             "summary_text": fallback_text
         }
@@ -352,8 +367,68 @@ def extract_key_contract_info(text):
         
     return info
 
+# ========== 완전히 안전한 데이터 처리 함수들 ==========
+
+def safe_extract_list_data(data, default_list=None):
+    """데이터에서 안전하게 리스트를 추출하는 함수"""
+    if default_list is None:
+        default_list = []
+    
+    try:
+        if isinstance(data, list):
+            # 리스트인 경우 문자열로 변환 가능한 요소만 필터링
+            return [str(item) for item in data if item is not None]
+        elif isinstance(data, (str, int, float)) and data:
+            return [str(data)]
+        elif isinstance(data, dict):
+            # 딕셔너리인 경우 값들을 리스트로 변환
+            values = []
+            for v in data.values():
+                if isinstance(v, list):
+                    values.extend([str(item) for item in v if item is not None])
+                elif v is not None:
+                    values.append(str(v))
+            return values
+        else:
+            return default_list
+    except Exception as e:
+        print(f"❌ safe_extract_list_data 오류: {e}")
+        return default_list
+
+def safe_join_data(data, default_msg="정보 없음"):
+    """데이터를 안전하게 문자열로 결합하는 함수"""
+    try:
+        # 먼저 안전한 리스트로 변환
+        safe_list = safe_extract_list_data(data, [])
+
+        if safe_list:
+            # 빈 문자열이나 None 값 제거
+            filtered_list = [item for item in safe_list if item and str(item).strip()]
+            if filtered_list:
+                return ', '.join(filtered_list)
+        
+        return default_msg
+    except Exception as e:
+        print(f"❌ safe_join_data 오류: {e}")
+        return default_msg
+
+def debug_data_type(data, name="data"):
+    """데이터 타입을 디버깅하는 함수"""
+    try:
+        print(f"🔍 {name} 타입: {type(data)}")
+        print(f"🔍 {name} 내용: {repr(data)}")
+        if isinstance(data, dict):
+            print(f"🔍 {name} 키들: {list(data.keys())}")
+            for k, v in data.items():
+                print(f"   {k}: {type(v)} = {repr(v)}")
+    except Exception as e:
+        print(f"❌ debug_data_type 오류: {e}")
+
+# ========== 수정된 위험 정보 추출 함수 ==========
+
 def extract_detailed_risk_info(text):
-    """상세한 위험 관련 정보 추출 - 안전성 강화"""
+    """상세한 위험 관련 정보 추출 - 완전 안전 버전"""
+    # 기본 구조를 명확히 정의
     risk_info = {
         'risk_keywords': [],
         'liability_terms': [],
@@ -365,39 +440,50 @@ def extract_detailed_risk_info(text):
     try:
         import re
 
-        # 손해배상 관련
-        liability_pattern = r'(손해배상|배상책임|배상의무|손실보상|피해보상|손해|배상)'
-        liability_matches = re.findall(liability_pattern, text)
-        risk_info['liability_terms'] = list(set(liability_matches)) if liability_matches else []
+        # 각 패턴별로 안전하게 추출
+        patterns = {
+            'liability_terms': r'(손해배상|배상책임|배상의무|손실보상|피해보상|손해|배상)',
+            'termination_terms': r'(해지|해제|종료|중단|파기|취소|철회)',
+            'obligation_terms': r'(의무|책임|이행|준수|완수|수행|실행)',
+            'penalty_terms': r'(위약금|연체료|지체상금|벌금|과태료|제재|처벌|징계)'
+        }
 
-        # 해지 관련
-        termination_pattern = r'(해지|해제|종료|중단|파기|취소|철회)'
-        termination_matches = re.findall(termination_pattern, text)
-        risk_info['termination_terms'] = list(set(termination_matches)) if termination_matches else []
+        for key, pattern in patterns.items():
+            try:
+                matches = re.findall(pattern, text)
+                if matches:
+                    # 중복 제거하고 리스트로 저장
+                    unique_matches = list(set(matches))
+                    risk_info[key] = unique_matches
+                    print(f"✅ {key}: {len(unique_matches)}개 발견")
+                else:
+                    risk_info[key] = []
+            except Exception as e:
+                print(f"❌ {key} 패턴 매칭 오류: {e}")
+                risk_info[key] = []
 
-        # 의무 관련
-        obligation_pattern = r'(의무|책임|이행|준수|완수|수행|실행)'
-        obligation_matches = re.findall(obligation_pattern, text)
-        risk_info['obligation_terms'] = list(set(obligation_matches)) if obligation_matches else []
-
-        # 제재 관련
-        penalty_pattern = r'(위약금|연체료|지체상금|벌금|과태료|제재|처벌|징계)'
-        penalty_matches = re.findall(penalty_pattern, text)
-        risk_info['penalty_terms'] = list(set(penalty_matches)) if penalty_matches else []
-
-        # 전체 위험 키워드
-        all_terms = (
-            risk_info['liability_terms'] +
-            risk_info['termination_terms'] +
-            risk_info['penalty_terms']
-        )
+        # 전체 위험 키워드 생성
+        all_terms = []
+        for key in ['liability_terms', 'termination_terms', 'penalty_terms']:
+            terms = risk_info.get(key, [])
+            if isinstance(terms, list):
+                all_terms.extend(terms)
+        
         risk_info['risk_keywords'] = list(set(all_terms)) if all_terms else []
 
-    except Exception as e:
-        print(f"❌ 위험 정보 추출 중 오류 발생: {e}")
-        # 오류가 발생해도 기본 구조를 반환
+        print(f"✅ 위험 정보 추출 완료: 총 {len(risk_info['risk_keywords'])}개 키워드")
         
-    return risk_info
+        # 디버깅 정보 출력
+        debug_data_type(risk_info, "risk_info")
+        
+        return risk_info
+
+    except Exception as e:
+        print(f"❌ 위험 정보 추출 중 심각한 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        # 오류 발생시에도 기본 구조 반환
+        return risk_info
 
 def validate_risk_analysis_quality(analysis_text):
     """위험분석 품질 검증"""
@@ -502,11 +588,14 @@ def fallback_korean_summary():
 
 def fallback_korean_risk_analysis(risk_info):
     """폴백 위험분석 - 추출된 정보 기반"""
-    risk_keywords = risk_info.get('risk_keywords', [])
+    try:
+        risk_keywords = safe_join_data(risk_info.get('risk_keywords') if isinstance(risk_info, dict) else [], "일반적인 계약 위험")
+    except:
+        risk_keywords = "일반적인 계약 위험"
 
     return f"""## ⚠️ 위험 분석
 
-**발견된 주요 위험 요소:** {', '.join(risk_keywords[:5]) if risk_keywords else '일반적인 계약 위험'}
+**발견된 주요 위험 요소:** {risk_keywords}
 
 **1. 손해배상 위험:**
 • 계약 위반시 손해배상 책임이 발생할 수 있습니다
