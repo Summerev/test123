@@ -99,6 +99,15 @@
   background: #c2daf2;
   border: 1px solid #a5b4fc;
   cursor: pointer;
+
+  /* ✅ 중앙 정렬 추가 */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .btn-login:hover {
@@ -125,6 +134,15 @@
   border: none;
   cursor: pointer;
   min-width: 100px;
+
+  /* ✅ 중앙 정렬 추가 */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .btn-signup:hover,
