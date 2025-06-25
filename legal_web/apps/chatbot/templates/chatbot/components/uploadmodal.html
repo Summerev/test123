@@ -1,14 +1,16 @@
 <div id="uploadModal" class="modal-overlay">
   <div class="modal">
     <div class="modal-header">
-      <h3>파일 업로드</h3>
+      <h3 data-translate-key="uploadPromptText">파일을 업로드 해주세요.</h3>
     </div>
     <input type="file" id="fileInput" />
+
     <select id="modeSelect">
-      <option value="contract">계약서</option>
-      <option value="policy">약관</option>
+      <option value="contract" data-translate-key="contractButtonText">계약서</option>
+      <option value="policy" data-translate-key="termsButtonText">약관</option>
     </select>
-    <button id="uploadConfirmBtn">업로드 완료</button>
+
+    <button id="uploadConfirmBtn" data-translate-key="fileSelectButton">파일 선택</button>
     <button class="modal-close">&times;</button>
   </div>
 </div>
