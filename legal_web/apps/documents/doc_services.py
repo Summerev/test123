@@ -40,147 +40,123 @@ def _translate_text(text: str, target_lang_name: str) -> str:
 # 약관 
 def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
     """
-    약관 문서 분석: RAG 기반 요약 및 위험 요소 분석
+    문서 분석의 각 단계를 로그로 출력하며 실행하고, 모든 예외를 처리합니다.
+    재귀적 요약 기능이 포함된 안정적인 버전입니다.
     """
     try:
-        print(f"[약관 분석] 시작: {uploaded_file.name}")
-        
-        # 1. 텍스트 추출
+        print("\n[함수 시작] 'analyze_terms_document'가 호출되었습니다.")
+
+        # --- 1. 텍스트 추출 ---
+        print("[1단계] 파일에서 텍스트를 추출합니다...")
         document_text = doc_retriever.get_document_text(uploaded_file)
         if not document_text:
             raise ValueError("문서에서 텍스트를 추출할 수 없습니다.")
-        
-        doc_type_name = "이용약관"
+        doc_type_name = "이용약관" if doc_type == "terms" else "계약서"
+        print(f"[1단계 완료] 텍스트 추출 성공 (총 글자 수: {len(document_text)}자).")
 
-        # 2. 한국어 기준으로 문서 요약 및 위험 요소 분석
-        print("[약관 분석] OpenAI API로 분석 중...")
-        summary_chunks = doc_retriever.split_text_into_chunks_terms(document_text, max_tokens=2000)
-        
-        # 개별 청크 요약
-        individual_summaries = []
-        for chunk in summary_chunks:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": doc_prompt_manager.get_summarize_chunk_terms_prompt(chunk, doc_type_name)}],
-                max_tokens=300, 
-                temperature=0.3
-            )
-            individual_summaries.append(response.choices[0].message.content)
-        
-        # 전체 요약 생성
-        final_summary_ko_prompt = doc_prompt_manager.get_combine_summaries_terms_prompt(individual_summaries, doc_type_name)
-        final_summary_ko = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": final_summary_ko_prompt}],
-            max_tokens=1000, 
-            temperature=0.7
-        ).choices[0].message.content
-        
-        # 위험 요소 분석
-        risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_terms_prompt(document_text)
-        risk_text_ko = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": risk_text_ko_prompt}],
-            max_tokens=1000, 
-            temperature=0.3
-        ).choices[0].message.content
+        # --- 2. 요약 및 위험 분석 ---
+        # 이 전체 블록을 별도의 try-except로 감싸서 문제 지점을 특정합니다.
+        try:
+            print("\n[2단계] AI를 이용한 요약 및 위험 분석을 시작합니다...")
 
-        # 3. 선택된 언어로 번역
-        print("[약관 분석] 번역 처리 중...")
+            # --- 2-1. Map-Reduce 요약 ---
+            print("  - [2-1 시작] 문서를 요약용 청크로 분할합니다...")
+            summary_chunks = doc_retriever.split_text_into_chunks(document_text, chunk_size=4000)
+            print(f"  - 요약을 위해 문서를 {len(summary_chunks)}개의 청크로 나누었습니다.")
+
+            print("  - [Map 단계] 각 청크를 개별적으로 요약합니다...")
+            individual_summaries = []
+            for i, chunk in enumerate(summary_chunks):
+                summary_prompt = doc_prompt_manager.get_summarize_chunk_prompt(chunk, doc_type_name)
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo", messages=[{"role": "user", "content": summary_prompt}],
+                    max_tokens=300, temperature=0.3
+                )
+                individual_summaries.append(response.choices[0].message.content)
+            print(f"  - [Map 단계 완료] {len(individual_summaries)}개의 개별 요약본을 생성했습니다.")
+
+            # --- 2-2. 재귀적 요약 (Reduce 단계) ---
+            print("  - [Reduce 단계] 요약본들을 하나로 합치는 작업을 시작합니다...")
+            current_summaries = individual_summaries
+            while len(current_summaries) > 1:
+                print(f"    - 현재 요약본 {len(current_summaries)}개를 그룹으로 묶어 다시 요약합니다...")
+                next_level_summaries = []
+                # 10개씩 묶어서 처리
+                for i in range(0, len(current_summaries), 10):
+                    batch = current_summaries[i:i+10]
+                    reduce_prompt = doc_prompt_manager.get_combine_summaries_prompt(batch, doc_type_name)
+                    intermediate_summary = client.chat.completions.create(
+                        model="gpt-3.5-turbo", messages=[{"role": "user", "content": reduce_prompt}],
+                        max_tokens=1500, temperature=0.5
+                    ).choices[0].message.content
+                    next_level_summaries.append(intermediate_summary)
+                current_summaries = next_level_summaries
+            
+            final_summary_ko = current_summaries[0] if current_summaries else "요약 생성에 실패했습니다."
+            print("  - [Reduce 단계 완료] 최종 요약본을 생성했습니다.")
+
+            # --- 2-3. 위험 요소 분석 ---
+            print("  - [위험 요소 분석 시작]...")
+            risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_prompt(document_text)
+            risk_text_ko = client.chat.completions.create(
+                model="gpt-3.5-turbo", messages=[{"role": "user", "content": risk_text_ko_prompt}],
+                max_tokens=1000, temperature=0.3
+            ).choices[0].message.content
+            print("  - [위험 요소 분석 완료].")
+            print("[2단계 완료] 요약 및 위험 분석이 모두 끝났습니다.")
+
+        except Exception as summary_e:
+            print(f"[치명적 오류 - 2단계] 요약 또는 위험 분석 중 오류 발생: {summary_e}", exc_info=True)
+            raise summary_e
+
+        # --- 3. 번역 ---
+        print(f"\n[3단계] 결과를 '{language}' 언어로 번역합니다...")
         final_summary_lang, risk_text_lang = final_summary_ko, risk_text_ko
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
         if language in lang_map:
             target_lang_name = lang_map[language]
             final_summary_lang = _translate_text(final_summary_ko, target_lang_name)
             risk_text_lang = _translate_text(risk_text_ko, target_lang_name)
+        print("[3단계 완료] 번역 성공.")
 
-        # 4. QA를 위한 벡터화 및 저장
-        print("[약관 분석] 벡터화 처리 중...")
-        qa_chunks = doc_retriever.split_text_into_chunks_terms(document_text, max_tokens=500)
-        
-        if isinstance(user, AnonymousUser):
-            faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
-            storage_data = {"type": "faiss", "index": faiss_index, "chunks": indexed_chunks}
-        else:
-            # 벡터화와 저장을 분리
-            print("[약관 분석] 텍스트 벡터화 중...")
-            vectors = doc_retriever.get_embeddings(client, qa_chunks)
-            
-            print("[약관 분석] Qdrant에 저장 중...")
-            doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, vectors, user.id, session_id)
-            storage_data = {"type": "qdrant"}
+        # --- 4. QA를 위한 벡터화 ---
+        try:
+            print("\n[4단계] 질의응답(QA)을 위한 텍스트 분할 및 벡터화를 시작합니다...")
+            qa_chunks = doc_retriever.split_text_into_chunks(document_text, chunk_size=1500)
+            chunk_count = len(qa_chunks)
+            print(f"  - 텍스트가 {chunk_count}개의 조각으로 분할되었습니다.")
 
-        # 5. 결과 반환
-        summary_text = f"📋 문서 요약\n\n{final_summary_lang}\n\n---\n\n⚠️ 위험 요소 식별\n\n{risk_text_lang}"
-        
-        print(f"[약관 분석] 완료: {uploaded_file.name}")
+            print("  - 임베딩 및 DB/세션 저장을 시작합니다...")
+            if isinstance(user, AnonymousUser):
+                faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
+                storage_data = {"type": "faiss", "index": faiss_index, "chunks": indexed_chunks}
+                print("  - 비회원용 FAISS 인덱스 생성 및 저장 준비 완료.")
+            else:
+                doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, client, user.id, session_id)
+                storage_data = {"type": "qdrant"}
+                print(f"  - 회원(ID:{user.id})용 Qdrant DB에 저장 완료.")
+            print("[4단계 완료] 벡터화 및 저장 성공.")
+        except Exception as vector_e:
+            print(f"[치명적 오류 - 4단계] 벡터화 또는 DB 저장 중 오류 발생: {vector_e}", exc_info=True)
+            raise vector_e
+
+        # --- 5. 최종 결과 반환 ---
+        print("\n[성공] 모든 단계가 완료되어 성공 응답을 반환합니다.")
         return {
             "success": True,
-            "summary": summary_text,
+            "summary": f"📋 문서 요약\n\n{final_summary_lang}\n\n---\n\n⚠️ 위험 요소 식별\n\n{risk_text_lang}",
             "storage_data": storage_data,
-            "message": "약관 분석이 완료되었습니다."
+            "chunk_count": chunk_count
         }
 
+    # ★★★ 바깥쪽 최종 예외 처리 블록 ★★★
     except APIError as e:
+        print(f"\n[최종 오류 처리] OpenAI API 에러를 감지했습니다.")
         error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
         if e.code == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다."
-        
-        print(f"[ERROR] 약관 분석 - OpenAI API Error: {e}")
-        return {"success": False, "error": error_message}
+        return {"success": False, "error": error_message, "status_code": e.status_code}
     
     except Exception as e:
-        print(f"[ERROR] 약관 분석 - Unexpected error: {e}")
-        return {"success": False, "error": f"약관 분석 중 오류가 발생했습니다: {e}"}
-
-def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
-    """
-    계약서 문서 분석: 기존 방식의 텍스트 추출
-    """
-    try:
-        print(f"[계약서 분석] 시작: {uploaded_file.name}")
-        
-        # 파일 확장자 확인
-        filename = uploaded_file.name
-        ext = os.path.splitext(filename)[1].lower().lstrip('.')
-        
-        content = ''
-        if ext == 'pdf':
-            doc = fitz.open(stream=uploaded_file.read(), filetype='pdf')
-            content = "\n".join(page.get_text() for page in doc)
-        elif ext == 'docx':
-            document = docx.Document(uploaded_file)
-            content = "\n".join(p.text for p in document.paragraphs)
-        elif ext == 'txt':
-            content = uploaded_file.read().decode('utf-8')
-        elif ext == 'doc':
-            return {
-                "success": False,
-                "error": ".doc 형식은 지원되지 않습니다. MS Word에서 .docx로 저장 후 다시 시도하세요."
-            }
-        else:
-            return {
-                "success": False,
-                "error": f"지원하지 않는 파일 형식입니다: {ext}"
-            }
-        
-        if not content.strip():
-            return {
-                "success": False,
-                "error": "문서에서 텍스트를 추출할 수 없습니다."
-            }
-        
-        print(f"[계약서 분석] 완료: {uploaded_file.name} ({len(content)}자)")
-        return {
-            "success": True,
-            "text": content,
-            "summary": f"📄 계약서 텍스트 추출 완료\n\n문서 길이: {len(content)}자\n\n추출된 내용을 바탕으로 질문해주세요.",
-            "message": "계약서 텍스트 추출이 완료되었습니다."
-        }
-        
-    except Exception as e:
-        print(f"[ERROR] 계약서 분석 - Error: {e}")
-        return {
-            "success": False,
-            "error": f"계약서 처리 중 오류가 발생했습니다: {e}"
-        }
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다.")
+        return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}

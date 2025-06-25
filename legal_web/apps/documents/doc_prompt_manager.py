@@ -12,6 +12,10 @@ def get_summarize_chunk_terms_prompt(chunk_text, doc_type_name):
 # --- 약관 문서 종합 요약 프롬프트 ---
 def get_combine_summaries_terms_prompt(summary_list, doc_type_name):
     combined_text = "\n\n".join(summary_list)
+    MAX_CHARS = 12000 
+    if len(combined_text) > MAX_CHARS:
+        print(f"Warning: Combined text is too long ({len(combined_text)}). Truncating to {MAX_CHARS} chars.")
+        combined_text = combined_text[:MAX_CHARS]
     return f"""
 다음은 여러 {doc_type_name} 조항들의 요약본입니다. 이들을 종합하여 하나의 완성된 {doc_type_name} 요약본으로 만들어 주세요.
 

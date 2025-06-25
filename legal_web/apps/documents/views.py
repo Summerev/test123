@@ -41,8 +41,12 @@ def analyze_document_view(request):
     else:
         return JsonResponse({'error': f'지원하지 않는 문서 유형입니다: {doc_type}'}, status=400)
 
-    if not result.get('success'):
-        return JsonResponse({'error': result.get('error', '분석 중 오류 발생')}, status=500)
+    if not analysis_result.get('success'):
+        status_code = analysis_result.get('status_code', 500)
+        return JsonResponse(
+            {'error': analysis_result.get('error', '분석 중 오류 발생')}, 
+            status=status_code
+        )
 
     # 비회원인 경우 FAISS 인덱스를 세션에 저장 (약관의 경우만)
     if doc_type == 'terms':
