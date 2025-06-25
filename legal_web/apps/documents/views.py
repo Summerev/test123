@@ -1,6 +1,5 @@
 import pickle
 import base64
-import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -17,6 +16,7 @@ def analyze_document_view(request):
     doc_type = request.POST.get('doc_type')
     session_id = request.POST.get('session_id')
     language = request.POST.get('language', 'ko')
+    result = None
 
     if not all([uploaded_file, doc_type, session_id]):
         return JsonResponse({'error': '파일, 문서 유형, 세션 ID가 모두 필요합니다.'}, status=400)
@@ -31,20 +31,21 @@ def analyze_document_view(request):
             language=language
         )
     elif doc_type == 'contract':
+        print('계약서는 미구현')
         # 계약서 처리: 기존 텍스트 추출
-        result = services.analyze_contract_document(
-            user=request.user,
-            uploaded_file=uploaded_file,
-            session_id=session_id,
-            language=language
-        )
+        #result = services.analyze_contract_document(
+        #    user=request.user,
+        #    uploaded_file=uploaded_file,
+        #    session_id=session_id,
+        #    language=language
+        #)
     else:
         return JsonResponse({'error': f'지원하지 않는 문서 유형입니다: {doc_type}'}, status=400)
 
-    if not analysis_result.get('success'):
-        status_code = analysis_result.get('status_code', 500)
+    if not result.get('success'):
+        status_code = result.get('status_code', 500)
         return JsonResponse(
-            {'error': analysis_result.get('error', '분석 중 오류 발생')}, 
+            {'error': result.get('error', '분석 중 오류 발생')},
             status=status_code
         )
 
@@ -54,11 +55,11 @@ def analyze_document_view(request):
         if storage_data.get('type') == 'faiss':
             faiss_index = storage_data.get('index')
             chunks = storage_data.get('chunks')
-            
+
             if faiss_index is not None and chunks is not None:
                 serialized_index = pickle.dumps(faiss_index)
                 encoded_index_str = base64.b64encode(serialized_index).decode('utf-8')
-                
+
                 request.session[f'rag_index_b64_{session_id}'] = encoded_index_str
                 request.session[f'rag_chunks_{session_id}'] = chunks
                 print(f"비회원 약관 분석 완료. FAISS 데이터를 세션에 저장함 (세션키: {session_id})")

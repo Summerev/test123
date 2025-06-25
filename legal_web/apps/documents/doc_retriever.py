@@ -1,23 +1,21 @@
 # teamproject/legal_web/apps/documents/doc_retriever.py
 
+# 표준 라이브러리
 import re
-import textwrap
+import uuid
+
+# 서드파티 라이브러리
 import numpy as np
 import faiss
-
-import fitz  
-import docx  
-
+import fitz
+import docx
 from django.conf import settings
 from qdrant_client import QdrantClient, models
-
-import uuid
-from openai import OpenAI, APIError
 
 # --- 파일에서 텍스트 추출 ---
 def get_document_text(uploaded_file):
     print(f"🔄 get_document_text 함수 시작: {uploaded_file.name}")
-    
+
     filename = uploaded_file.name
     ext = filename.split('.')[-1].lower()
     text = ""
@@ -36,14 +34,13 @@ def get_document_text(uploaded_file):
     except Exception as e:
         print(f"❌ get_document_text 함수 오류 발생: {e}")
         raise ValueError(f"파일 처리 중 오류가 발생했습니다: {e}")
-    
+
     print(f"✅ 파일 '{filename}'에서 텍스트 추출 완료 ({len(text)}자)")
     print(f"🏁 get_document_text 함수 종료: {filename}")
     return text
 
 
 # --- 텍스트 처리 및 벡터화 ---
-import re
 
 def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
     """
@@ -55,7 +52,7 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
         return []
 
     print(f"--- 'split_text_into_chunks_terms' 함수 실행 시작 (최대 청크 크기: {chunk_size}자) ---")
-    
+
     # '제N조' 패턴으로 문서를 (제목, 내용) 쌍으로 분리
     pattern = r'(제\s*\d+\s*조[^\n]*)'
     split_parts = re.split(pattern, text)
@@ -69,10 +66,10 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
         article_title = split_parts[i].strip()
         article_content = split_parts[i+1].strip() if (i + 1) < len(split_parts) else ""
         articles.append((article_title, article_content))
-        
+
     if not articles and text:
         articles = [("문서 전체", text)]
-    
+
     print(f"  - '제N조' 패턴을 기준으로 문서를 {len(articles)}개의 조항/부분으로 1차 분할했습니다.")
 
     # 각 조항을 재분할하며, 모든 청크에 메타데이터 추가
@@ -80,7 +77,7 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
     for article_title, article_content in articles:
         if not article_content.strip():
             continue
-        
+
         if len(article_content) > chunk_size:
             print(f"  - 정보: 긴 조항 '{article_title}' (길이: {len(article_content)})을/를 재분할합니다.")
             for i in range(0, len(article_content), chunk_size):
@@ -91,13 +88,8 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
 
     final_chunk_list = [chunk for chunk in final_chunks if chunk.strip()]
     print(f"--- 'split_text_into_chunks' 함수 종료. 최종 반환 청크 개수: {len(final_chunk_list)}개 ---")
-    
+
     return final_chunk_list
-
-
-
-
-import time # ★★★ time 모듈 import 추가 (API 호출 사이에 휴식을 주기 위함)
 
 def get_embeddings(client, texts: list[str]):
     # ... (배치 처리 로직이 포함된 안정적인 버전)
@@ -129,7 +121,7 @@ def get_qdrant_client():
         print(f"❌ get_qdrant_client 함수 오류 발생: {e}")
         raise
 
-def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], vectors: list, user_id: int, session_id: str):
+def upsert_vectors_to_qdrant(client: QdrantClient, chunks: list[str], vectors: list, user_id: int, session_id: str):
     """
     문서 조각과 벡터를 Qdrant에 저장(upsert)합니다. (순수 저장 로직만 담당)
     
@@ -140,11 +132,11 @@ def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], vectors: 
         user_id: 사용자 ID
         session_id: 세션 ID
     """
-    print(f"🔄 upsert_document_to_qdrant 함수 시작: user_id={user_id}, session_id={session_id}, chunks={len(chunks)}개")
+    print(f"🔄 upsert_vectors_to_qdrant 함수 시작: user_id={user_id}, session_id={session_id}, chunks={len(chunks)}개")
 
     if not chunks:
         print("⚠️ 저장할 청크가 없어 함수를 종료합니다")
-        print("🏁 upsert_document_to_qdrant 함수 종료: 청크 없음")
+        print("🏁 upsert_vectors_to_qdrant 함수 종료: 청크 없음")
         return
 
     if len(chunks) != len(vectors):
@@ -192,7 +184,7 @@ def upsert_document_to_qdrant(client: QdrantClient, chunks: list[str], vectors: 
         client.upsert(collection_name=collection_name, points=points, wait=True)
         print(f"✅ Qdrant에 {len(points)}개의 포인트를 저장했습니다. (user: {user_id}, session: {session_id})")
 
-    print(f"🏁 upsert_document_to_qdrant 함수 종료: {len(points)}개 포인트 저장 완료")
+    print(f"🏁 upsert_vectors_to_qdrant 함수 종료: {len(points)}개 포인트 저장 완료")
 
 def search_qdrant(client: QdrantClient, embedding_client, query: str, user_id: int, session_id: str, top_k=5):
     """
@@ -236,33 +228,22 @@ def search_qdrant(client: QdrantClient, embedding_client, query: str, user_id: i
 
 
 # --- FAISS 인덱스 생성 (비회원용) ---
-def create_faiss_index(client, chunks: list[str]):
+def create_faiss_index_from_vectors(vectors: list[np.ndarray]):
     """
-    텍스트 조각 목록을 받아 메모리에 FAISS 인덱스를 생성합니다.
+    벡터 리스트를 받아 FAISS 인덱스를 생성합니다.
     """
-    print(f"🔄 create_faiss_index 함수 시작: {len(chunks)}개 청크")
+    if not vectors:
+        print("⚠️ 벡터가 없어 인덱스를 생성할 수 없습니다")
+        return None
 
-    if not chunks:
-        print("⚠️ 청크가 없어 인덱스를 생성할 수 없습니다")
-        print("🏁 create_faiss_index 함수 종료: 빈 결과 반환")
-        return None, []
+    print(f"🔧 FAISS 인덱스 생성 중... (차원: {len(vectors[0])})")
+    vector_array = np.stack(vectors).astype(np.float32)
+    dimension = vector_array.shape[1]
 
-    print("🤖 청크를 임베딩으로 변환 중...")
-    embeddings = get_embeddings(client, chunks)
-    if not embeddings:
-        print("⚠️ 임베딩 생성 실패")
-        print("🏁 create_faiss_index 함수 종료: 빈 결과 반환")
-        return None, []
-
-    print(f"🔧 FAISS 인덱스 생성 중... (차원: {len(embeddings[0])})")
-    dimension = len(embeddings[0])
     index = faiss.IndexFlatL2(dimension)
-    index.add(np.array(embeddings))
-
+    index.add(vector_array)  # type: ignore # pylint: disable=no-value-for-parameter
     print(f"✅ FAISS 인덱스 생성 완료: {index.ntotal}개 벡터 추가")
-    print(f"🏁 create_faiss_index 함수 종료: 인덱스 생성 완료")
-    return index, chunks
-
+    return index
 
 # --- FAISS 인덱스 검색 (비회원용) ---
 def search_faiss_index(index: faiss.Index, chunks: list[str], client, query: str, top_k=5):

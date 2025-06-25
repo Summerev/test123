@@ -7,10 +7,6 @@ from django.contrib.auth.models import AnonymousUser
 from . import doc_retriever
 from . import doc_prompt_manager
 
-import os
-import fitz
-import docx
-
 # 클라이언트 초기화 (settings.py에 OPENAI_API_KEY 설정)
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 qdrant_client = doc_retriever.get_qdrant_client()
@@ -37,7 +33,7 @@ def _translate_text(text: str, target_lang_name: str) -> str:
         print(f"Unexpected error during translation: {e}")
         return f"({target_lang_name} 번역 실패: 시스템 오류) {text}"
 
-# 약관 
+# 약관
 def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
     """
     문서 분석의 각 단계를 로그로 출력하며 실행하고, 모든 예외를 처리합니다.
@@ -61,7 +57,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
 
             # --- 2-1. Map-Reduce 요약 ---
             print("  - [2-1 시작] 문서를 요약용 청크로 분할합니다...")
-            summary_chunks = doc_retriever.split_text_into_chunks(document_text, chunk_size=4000)
+            summary_chunks = doc_retriever.split_text_into_chunks_terms(document_text, chunk_size=4000)
             print(f"  - 요약을 위해 문서를 {len(summary_chunks)}개의 청크로 나누었습니다.")
 
             print("  - [Map 단계] 각 청크를 개별적으로 요약합니다...")
@@ -91,7 +87,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
                     ).choices[0].message.content
                     next_level_summaries.append(intermediate_summary)
                 current_summaries = next_level_summaries
-            
+
             final_summary_ko = current_summaries[0] if current_summaries else "요약 생성에 실패했습니다."
             print("  - [Reduce 단계 완료] 최종 요약본을 생성했습니다.")
 
@@ -122,19 +118,33 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
         # --- 4. QA를 위한 벡터화 ---
         try:
             print("\n[4단계] 질의응답(QA)을 위한 텍스트 분할 및 벡터화를 시작합니다...")
-            qa_chunks = doc_retriever.split_text_into_chunks(document_text, chunk_size=1500)
+            qa_chunks = doc_retriever.split_text_into_chunks_terms(document_text, chunk_size=1500)
             chunk_count = len(qa_chunks)
             print(f"  - 텍스트가 {chunk_count}개의 조각으로 분할되었습니다.")
 
-            print("  - 임베딩 및 DB/세션 저장을 시작합니다...")
+            print("  - 텍스트 벡터화(임베딩) 시작...")
+            vectors = doc_retriever.get_embeddings(client, qa_chunks)
+            print(f"  - 총 {len(vectors)}개 벡터 생성 완료.")
+
             if isinstance(user, AnonymousUser):
-                faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
-                storage_data = {"type": "faiss", "index": faiss_index, "chunks": indexed_chunks}
-                print("  - 비회원용 FAISS 인덱스 생성 및 저장 준비 완료.")
+                print("  - FAISS 인덱스 생성 중...")
+                faiss_index = doc_retriever.create_faiss_index_from_vectors(vectors)
+
+                storage_data = {"type": "faiss", "index": faiss_index, "chunks": qa_chunks}
+                print("  - 비회원용 FAISS 인덱스 및 청크 저장 완료.")
             else:
-                doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, client, user.id, session_id)
+                print("  - Qdrant DB에 벡터 저장 시작...")
+
+                doc_retriever.upsert_vectors_to_qdrant(
+                    client=qdrant_client,
+                    chunks=qa_chunks,
+                    vectors=vectors,
+                    user_id=user.id,
+                    session_id=session_id
+                )
                 storage_data = {"type": "qdrant"}
                 print(f"  - 회원(ID:{user.id})용 Qdrant DB에 저장 완료.")
+
             print("[4단계 완료] 벡터화 및 저장 성공.")
         except Exception as vector_e:
             print(f"[치명적 오류 - 4단계] 벡터화 또는 DB 저장 중 오류 발생: {vector_e}", exc_info=True)
@@ -152,11 +162,21 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
     # ★★★ 바깥쪽 최종 예외 처리 블록 ★★★
     except APIError as e:
         print(f"\n[최종 오류 처리] OpenAI API 에러를 감지했습니다.")
-        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
-        if e.code == 'insufficient_quota':
+        status_code = getattr(e, 'status_code', 500)
+        error_message = f"AI 모델 통신 오류 (상태 코드: {status_code})"
+
+        if getattr(e, 'code', None) == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다."
-        return {"success": False, "error": error_message, "status_code": e.status_code}
-    
+
+        return {
+            "success": False,
+            "error": error_message,
+            "status_code": status_code
+        }
+
     except Exception as e:
         print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다.")
         return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
+
+# def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
+#    pass
