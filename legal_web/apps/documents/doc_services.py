@@ -52,15 +52,13 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
         document_text = doc_retriever.get_document_text(uploaded_file)
         if not document_text:
             raise ValueError("문서에서 텍스트를 추출할 수 없습니다.")
-        doc_type_name = "이용약관" if doc_type == "terms" else "계약서"
+        doc_type_name = "이용약관"
         print(f"[1단계 완료] 텍스트 추출 성공 (총 글자 수: {len(document_text)}자).")
 
         # --- 2. 요약 및 위험 분석 ---
         try:
             # --- 2-1. Map-Reduce 요약 ---
             summary_chunks = doc_retriever.split_text_into_chunks_terms(document_text, chunk_size=4000)
-            print(f"  - [2단계] 청크 갯수: {len(summary_chunks)}")
-
             individual_summaries = []
             for i, chunk in enumerate(summary_chunks):
                 summary_prompt = doc_prompt_manager.get_summarize_chunk_terms_prompt(chunk, doc_type_name)
@@ -86,7 +84,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
                     ).choices[0].message.content
                     next_level_summaries.append(intermediate_summary)
                 current_summaries = next_level_summaries
-            
+
             final_summary_ko = current_summaries[0] if current_summaries else "요약 생성에 실패했습니다."
             print("  - [Reduce 단계 완료] 최종 요약본을 생성")
 
@@ -104,6 +102,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
             raise summary_e
 
         # --- 3. 번역 ---
+        print(f"\n[3단계] 결과를 '{language}' 언어로 번역합니다...")
         final_summary_lang, risk_text_lang = final_summary_ko, risk_text_ko
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
         if language in lang_map:
@@ -112,15 +111,27 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
             risk_text_lang = _translate_text(risk_text_ko, target_lang_name)
         print("[3단계 완료] 번역 성공.")
 
+
         # 4. QA를 위한 벡터화
         qa_chunks = doc_retriever.split_text_into_chunks_terms(document_text, chunk_size=1500)
+        chunk_count = len(qa_chunks)
+        print(f"  - 텍스트가 {chunk_count}개의 조각으로 분할되었습니다.")
+
+        print("  - 텍스트 벡터화(임베딩) 시작...")
+        vectors = doc_retriever.get_embeddings(client, qa_chunks)
+        print(f"  - 총 {len(vectors)}개 벡터 생성 완료.")
         
         if isinstance(user, AnonymousUser):
-            faiss_index, indexed_chunks = doc_retriever.create_faiss_index(client, qa_chunks)
-            storage_data = {"type": "faiss", "index": faiss_index, "chunks": indexed_chunks}
+            print("  - FAISS 인덱스 생성 중...")
+            faiss_index = doc_retriever.create_faiss_index_from_vectors(vectors)
+
+            storage_data = {"type": "faiss", "index": faiss_index, "chunks": qa_chunks}
+            print("  - 비회원용 FAISS 인덱스 및 청크 저장 완료.")
         else:
-            doc_retriever.upsert_document_to_qdrant(qdrant_client, qa_chunks, client, user.id, session_id)
+            doc_retriever.upsert_vectors_to_qdrant(qdrant_client, qa_chunks, vectors, user.id, session_id)
             storage_data = {"type": "qdrant"}
+
+                    
 
         # 5. 결과 반환
         summary_text = f"📋 문서 요약\n\n{final_summary_lang}\n\n---\n\n⚠️ 위험 요소 식별\n\n{risk_text_lang}"
@@ -146,56 +157,3 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
         traceback.print_exc() # 모든 종류의 예외에 대한 상세 정보 출력
         return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
 
-
-
-def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
-    """
-    계약서 문서 분석: 기존 방식의 텍스트 추출
-    """
-    try:
-        print(f"[계약서 분석] 시작: {uploaded_file.name}")
-        
-        # 파일 확장자 확인
-        filename = uploaded_file.name
-        ext = os.path.splitext(filename)[1].lower().lstrip('.')
-        
-        content = ''
-        if ext == 'pdf':
-            doc = fitz.open(stream=uploaded_file.read(), filetype='pdf')
-            content = "\n".join(page.get_text() for page in doc)
-        elif ext == 'docx':
-            document = docx.Document(uploaded_file)
-            content = "\n".join(p.text for p in document.paragraphs)
-        elif ext == 'txt':
-            content = uploaded_file.read().decode('utf-8')
-        elif ext == 'doc':
-            return {
-                "success": False,
-                "error": ".doc 형식은 지원되지 않습니다. MS Word에서 .docx로 저장 후 다시 시도하세요."
-            }
-        else:
-            return {
-                "success": False,
-                "error": f"지원하지 않는 파일 형식입니다: {ext}"
-            }
-        
-        if not content.strip():
-            return {
-                "success": False,
-                "error": "문서에서 텍스트를 추출할 수 없습니다."
-            }
-        
-        print(f"[계약서 분석] 완료: {uploaded_file.name} ({len(content)}자)")
-        return {
-            "success": True,
-            "text": content,
-            "summary": f"📄 계약서 텍스트 추출 완료\n\n문서 길이: {len(content)}자\n\n추출된 내용을 바탕으로 질문해주세요.",
-            "message": "계약서 텍스트 추출이 완료되었습니다."
-        }
-        
-    except Exception as e:
-        print(f"[ERROR] 계약서 분석 - Error: {e}")
-        return {
-            "success": False,
-            "error": f"계약서 처리 중 오류가 발생했습니다: {e}"
-        }
