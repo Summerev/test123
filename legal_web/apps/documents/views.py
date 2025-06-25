@@ -32,39 +32,50 @@ def analyze_document_view(request):
         )
     elif doc_type == 'contract':
         print('계약서는 미구현')
-        # 계약서 처리: 기존 텍스트 추출
-        #result = services.analyze_contract_document(
-        #    user=request.user,
-        #    uploaded_file=uploaded_file,
-        #    session_id=session_id,
-        #    language=language
-        #)
+        # 계약서 처리: RAG 기반 분석
+        result = services.analyze_contract_document(
+            user=request.user,
+            uploaded_file=uploaded_file,
+            session_id=session_id,
+            language=language
+        )
     else:
         return JsonResponse({'error': f'지원하지 않는 문서 유형입니다: {doc_type}'}, status=400)
 
-    if not result.get('success'):
-        status_code = result.get('status_code', 500)
+    if result is None or not result.get('success', False):
+        if result is None:
+            error_message = "문서 분석 서비스 호출에 실패했습니다. 내부 오류를 확인하세요."
+            status_code = 500
+        else:
+            error_message = result.get('error', '문서 분석 중 알 수 없는 오류 발생')
+            status_code = result.get('status_code', 500)
+
         return JsonResponse(
-            {'error': result.get('error', '분석 중 오류 발생')},
+            {'error': error_message},
             status=status_code
         )
 
-    # 비회원인 경우 FAISS 인덱스를 세션에 저장 (약관의 경우만)
-    if doc_type == 'terms':
-        storage_data = result.get('storage_data', {})
-        if storage_data.get('type') == 'faiss':
-            faiss_index = storage_data.get('index')
-            chunks = storage_data.get('chunks')
+    # --- 수정된 FAISS 인덱스 세션 저장 로직 ---
+    # doc_type에 관계없이 result에 'faiss' 유형의 storage_data가 있으면 저장
+    storage_data = result.get('storage_data', {})
+    if storage_data.get('type') == 'faiss': # 이 조건만으로 충분함
+        faiss_index = storage_data.get('index')
+        chunks = storage_data.get('chunks')
 
-            if faiss_index is not None and chunks is not None:
+        if faiss_index is not None and chunks is not None:
+            try:
                 serialized_index = pickle.dumps(faiss_index)
                 encoded_index_str = base64.b64encode(serialized_index).decode('utf-8')
 
                 request.session[f'rag_index_b64_{session_id}'] = encoded_index_str
                 request.session[f'rag_chunks_{session_id}'] = chunks
-                print(f"비회원 약관 분석 완료. FAISS 데이터를 세션에 저장함 (세션키: {session_id})")
+                print(f"비회원 문서 분석 완료. FAISS 데이터를 세션에 저장함 (세션키: {session_id}, 문서 유형: {doc_type})")
+            except Exception as e:
+                print(f"FAISS 인덱스 직렬화/저장 오류: {e}")
+        else:
+            print(f"⚠️ FAISS 인덱스 또는 청크가 None이어서 세션에 저장하지 못했습니다. index={faiss_index is not None}, chunks={chunks is not None}")
+    # --- 수정된 FAISS 인덱스 세션 저장 로직 끝 ---
 
-    # 결과 반환
     return JsonResponse({
         'summary': result.get('summary'),
         'text': result.get('text'),

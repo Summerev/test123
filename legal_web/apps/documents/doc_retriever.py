@@ -121,16 +121,17 @@ def get_qdrant_client():
         print(f"❌ get_qdrant_client 함수 오류 발생: {e}")
         raise
 
-def upsert_vectors_to_qdrant(client: QdrantClient, chunks: list[str], vectors: list, user_id: int, session_id: str):
+def upsert_vectors_to_qdrant(client: QdrantClient, chunks: list[str], vectors: list, user_id: int, session_id: str, payloads: list[dict] = None):
     """
     문서 조각과 벡터를 Qdrant에 저장(upsert)합니다. (순수 저장 로직만 담당)
     
     Args:
         client: Qdrant 클라이언트
-        chunks: 텍스트 조각 리스트
+        chunks: 텍스트 조각 리스트 (기본 페이로드용)
         vectors: 미리 계산된 벡터 리스트
         user_id: 사용자 ID
         session_id: 세션 ID
+        payloads: 사전 정의된 페이로드 리스트 (선택적, 계약서용)
     """
     print(f"🔄 upsert_vectors_to_qdrant 함수 시작: user_id={user_id}, session_id={session_id}, chunks={len(chunks)}개")
 
@@ -141,6 +142,10 @@ def upsert_vectors_to_qdrant(client: QdrantClient, chunks: list[str], vectors: l
 
     if len(chunks) != len(vectors):
         raise ValueError(f"청크 개수({len(chunks)})와 벡터 개수({len(vectors)})가 일치하지 않습니다.")
+    
+    # payloads가 제공된 경우 길이 검증
+    if payloads and len(chunks) != len(payloads):
+        raise ValueError(f"청크 개수({len(chunks)})와 페이로드 개수({len(payloads)})가 일치하지 않습니다.")
 
     collection_name = "legal_documents"  # 모든 문서를 하나의 컬렉션에 저장
 
@@ -160,31 +165,61 @@ def upsert_vectors_to_qdrant(client: QdrantClient, chunks: list[str], vectors: l
         # 메타데이터 필터링을 위한 인덱스 생성
         client.create_payload_index(collection_name=collection_name, field_name="user_id", field_schema="integer")
         client.create_payload_index(collection_name=collection_name, field_name="session_id", field_schema="keyword")
-        print(f"📁 컬렉션 '{collection_name}' 및 인덱스 생성 완료")
+
+        # 계약서용 추가 인덱스 (있어도 오류 안남)
+        try:
+            client.create_payload_index(collection_name=collection_name, field_name="article_num", field_schema="integer")
+            client.create_payload_index(collection_name=collection_name, field_name="type", field_schema="keyword")
+        except:
+            pass  # 이미 존재하면 무시
+                
+            print(f"📁 컬렉션 '{collection_name}' 및 인덱스 생성 완료")
 
     # 2. Qdrant에 저장할 포인트(Point) 생성
     print("📦 포인트 데이터 생성 중...")
     points = []
+
     for i, chunk in enumerate(chunks):
+        # 페이로드 결정: 사전 정의된 것이 있으면 사용, 없으면 기본 생성
+        if payloads:
+            # 계약서: 사전 정의된 페이로드 + 공통 메타데이터
+            payload = {
+                **payloads[i],  # 기존 페이로드 (article_num, article_title, text, type 등)
+                "user_id": user_id,
+                "session_id": session_id
+            }
+        else:
+            # 약관: 기본 페이로드
+            payload = {
+                "text": chunk,
+                "user_id": user_id,
+                "session_id": session_id
+            }
+
         points.append(
             models.PointStruct(
                 id=str(uuid.uuid4()),  # 각 포인트마다 고유 ID 생성
                 vector=vectors[i].tolist(),  # 미리 계산된 벡터를 list 형태로 변환
-                payload={
-                    "text": chunk,
-                    "user_id": user_id,
-                    "session_id": session_id
-                }
+                payload=payload
             )
         )
 
     # 3. 데이터 업서트(Upsert)
     if points:
-        print(f"💾 Qdrant에 {len(points)}개 포인트 업서트 중...")
-        client.upsert(collection_name=collection_name, points=points, wait=True)
-        print(f"✅ Qdrant에 {len(points)}개의 포인트를 저장했습니다. (user: {user_id}, session: {session_id})")
-
-    print(f"🏁 upsert_vectors_to_qdrant 함수 종료: {len(points)}개 포인트 저장 완료")
+        try: # 전체 upsert 시도를 try 블록으로 감싸는 것이 좋습니다.
+            print(f"💾 Qdrant에 {len(points)}개 포인트 업서트 중...")
+            client.upsert(collection_name=collection_name, points=points, wait=True)
+            print(f"✅ Qdrant에 {len(points)}개의 포인트를 저장했습니다. (user: {user_id}, session: {session_id})")
+            print(f"🏁 upsert_vectors_to_qdrant 함수 종료: {len(points)}개 포인트 저장 완료")
+            return True
+        except Exception as e:
+            print(f"❌ Qdrant 저장 실패: {str(e)}")
+            print(f"🏁 upsert_vectors_to_qdrant 함수 종료: 오류 발생")
+            return False
+    else: # points가 비어있을 경우 (chunks가 비어있으면 이미 종료되었지만, 혹시 모를 상황 대비)
+        print("⚠️ 저장할 포인트가 없어 업서트 작업을 건너뜁니다.")
+        print("🏁 upsert_vectors_to_qdrant 함수 종료: 저장할 포인트 없음")
+        return True # 저장이 필요 없었으므로 성공으로 간주
 
 def search_qdrant(client: QdrantClient, embedding_client, query: str, user_id: int, session_id: str, top_k=5):
     """

@@ -6,6 +6,7 @@ from django.contrib.auth.models import AnonymousUser
 
 from . import doc_retriever
 from . import doc_prompt_manager
+from . import doc_retriever_content
 
 # 클라이언트 초기화 (settings.py에 OPENAI_API_KEY 설정)
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -178,5 +179,146 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko'):
         print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다.")
         return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
 
-# def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
-#    pass
+# ----------------------------------------------------------
+
+def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
+    print("\n[함수 시작] 'analyze_contract_document'가 호출되었습니다.")
+    try:
+        # --- 1. 텍스트 추출 ---
+        print("[1단계] 파일에서 텍스트를 추출합니다...")
+        document_text = doc_retriever.get_document_text(uploaded_file)
+        if not document_text:
+            print("[1단계 오류] 문서에서 텍스트를 추출할 수 없습니다.")
+            return {"success": False, "error": "문서에서 텍스트를 추출할 수 없습니다.", "status_code": 400}
+        doc_type_name = "계약서"
+        print(f"[1단계 완료] 텍스트 추출 성공 (총 글자 수: {len(document_text)}자).")
+
+
+        # --- 2. 계약서 유형 감지 및 조항별 추출 ---
+        print("[2단계] 계약서 유형 감지 및 조항 추출 시작...")
+        detected_contract_type, confidence, contract_type_info = doc_retriever_content.detect_contract_type(document_text)
+        print(f"  - 감지된 계약서 유형: {detected_contract_type} (신뢰도: {confidence:.2f})")
+
+        document_chunks_raw = doc_retriever_content.extract_articles_with_content(document_text)
+        if not document_chunks_raw:
+             print("[2단계 오류] 텍스트를 유효한 조항 청크로 분할할 수 없습니다.")
+             return {"success": False, "error": "계약서 조항 분할에 실패했습니다.", "status_code": 400}
+        print(f"📋 총 {len(document_chunks_raw)}개 청크 생성 완료.")
+        chunk_count = len(document_chunks_raw)
+
+        # --- 3. 키워드 인덱스 생성 ---
+        print("[3단계] 키워드 인덱스 생성 중...")
+        keyword_index = doc_retriever_content.create_enhanced_keyword_index(document_chunks_raw, detected_contract_type)
+        print(f"[3단계 완료] 키워드 인덱스 생성 완료.")
+
+        # --- 4. 텍스트 강화 및 벡터화(임베딩) ---
+        print("[4단계] 텍스트 강화 및 임베딩 생성 시작...")
+        enhanced_texts, payloads = doc_retriever_content.enhance_document_texts(
+            document_chunks_raw, # 원본 청크 사용
+            user_id=user.id if user.is_authenticated else None, # AnonymousUser일 경우 None 전달
+            session_id=session_id
+        )
+        if not enhanced_texts or not payloads:
+            print("[4단계 오류] 텍스트 강화 또는 페이로드 생성 실패.")
+            return {"success": False, "error": "문서 텍스트 강화에 실패했습니다.", "status_code": 500}
+
+        print("  - 텍스트 벡터화(임베딩) 시작...")
+        # 여기서 정의된 openai_client를 사용
+        vectors = doc_retriever.get_embeddings(client, enhanced_texts)
+        if not vectors:
+            print("[4단계 오류] 벡터 생성 실패.")
+            return {"success": False, "error": "텍스트 임베딩 생성에 실패했습니다.", "status_code": 500}
+        print(f"[4단계 완료] 총 {len(vectors)}개 벡터 생성 완료.")
+
+        # --- 5. 벡터 저장 (FAISS 또는 Qdrant) ---
+        storage_data = {} # 결과에 포함될 스토리지 정보
+        print("[5단계] 벡터 저장 처리 (회원/비회원 구분)...")
+        if isinstance(user, AnonymousUser):
+            print("  - 비회원: FAISS 인덱스 생성 중...")
+            faiss_index = doc_retriever.create_faiss_index_from_vectors(vectors)
+            if faiss_index is None:
+                print("  - FAISS 인덱스 생성 실패.")
+                return {"success": False, "error": "FAISS 인덱스 생성 실패.", "status_code": 500}
+            storage_data = {"type": "faiss", "index": faiss_index, "chunks": enhanced_texts, "payloads": payloads}
+            print("  - 비회원용 FAISS 인덱스 및 청크 저장 완료.")
+        else:
+            print("  - 회원: Qdrant DB에 벡터 저장 시작...")
+            # qdrant_client가 미리 정의되었는지 확인
+            if qdrant_client is None:
+                print("  - Qdrant 클라이언트가 정의되지 않았습니다 (회원인데 DB 연결 실패).")
+                return {"success": False, "error": "데이터베이스 연결 오류 (Qdrant 클라이언트 없음).", "status_code": 500}
+
+            upsert_success = doc_retriever.upsert_vectors_to_qdrant(
+                client=qdrant_client,
+                chunks=enhanced_texts,
+                vectors=vectors,
+                user_id=user.id,
+                session_id=session_id,
+                payloads=payloads  # 계약서용 상세 페이로드 추가
+            )
+            if not upsert_success:
+                print("  - Qdrant DB에 벡터 저장 실패.")
+                return {"success": False, "error": "Qdrant에 벡터 저장 실패.", "status_code": 500}
+            storage_data = {"type": "qdrant"}
+            print(f"  - 회원(ID:{user.id})용 Qdrant DB에 저장 완료.")
+
+
+        # --- 6. 통합 분석 (요약 및 위험 분석) ---
+        print(f"[6단계] {language} 통일된 분석 시작 (한국어 기준 번역 방식)...")
+        
+        # doc_retriever_content.unified_analysis_with_translation 함수 호출
+        # 이 함수가 (final_summary_lang_string, risk_text_lang_string) 형태의 튜플을 반환한다고 가정
+        analysis_result_tuple = doc_retriever_content.unified_analysis_with_translation(client, document_text, language) # client 인자 없는 기존 함수에 맞춰 수정
+
+        # !!!!!!! 여기서 튜플을 직접 언패킹하여 변수에 할당합니다 !!!!!!!
+        # 이제 analysis_result_tuple.get('success', False) 이런 코드는 더 이상 사용하지 않습니다.
+        # 오류 처리가 필요하다면, analysis_result_tuple의 내용이 비어있거나 예상과 다를 때를 처리해야 합니다.
+        if not isinstance(analysis_result_tuple, tuple) or len(analysis_result_tuple) != 2:
+            print(f"[6단계 오류] unified_analysis_with_translation이 예상치 못한 형식의 값을 반환했습니다: {analysis_result_tuple}")
+            return {"success": False,
+                    "error": "통합 분석 서비스에서 예상치 못한 반환 형식.",
+                    "status_code": 500}
+
+        final_summary_lang = analysis_result_tuple[0] # 튜플의 첫 번째 요소가 요약
+        risk_text_lang = analysis_result_tuple[1]    # 튜플의 두 번째 요소가 위험 분석
+
+        # 이전에 정의된 chunk_count 변수를 사용하거나 계산합니다.
+        # 예: chunk_count = len(document_chunks_raw)
+        chunk_count = len(document_chunks_raw) if 'document_chunks_raw' in locals() else 0 # 또는 enhanced_texts 등
+
+        print("[6단계 완료] 통합 분석 완료. 요약 및 위험 분석 텍스트 준비됨.")
+
+        # --- 최종 성공 반환 (요청하신 형식) ---
+        print("\n[함수 종료] 'analyze_contract_document' 성공적으로 완료되었습니다.")
+        return {
+            "success": True,
+            "summary": f"📋 문서 요약\n\n{final_summary_lang}\n\n---\n\n⚠️ 위험 요소 식별\n\n{risk_text_lang}",
+            "storage_data": storage_data, # 기존 storage_data 변수 사용
+            "chunk_count": chunk_count # 새로 추가된 필드
+        }
+
+        #return {
+        #    "success": True,
+        #    "summary": f"📋 문서 요약\n\n{summary}\n\n---\n\n⚠️ 잠재적 위험 요소 식별\n\n{risk_analysis}\n\n---\n\n 유형 : {detected_contract_type}, 정보 : {contract_type_info}",
+        #    "storage_data": storage_data, # FAISS 또는 Qdrant 저장 정보 포함
+        #    "chunk_count": chunk_count
+        #}
+
+    # ★★★ 바깥쪽 최종 예외 처리 블록 ★★★
+    except APIError as e:
+        print("\n[최종 오류 처리] OpenAI API 에러를 감지했습니다.")
+        status_code = getattr(e, 'status_code', 500)
+        error_message = f"AI 모델 통신 오류 (상태 코드: {status_code})"
+
+        if getattr(e, 'code', None) == 'insufficient_quota':
+            error_message = "AI 서비스 사용 한도를 초과했습니다."
+
+        return {
+            "success": False,
+            "error": error_message,
+            "status_code": status_code
+        }
+
+    except Exception as e:
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {e}")
+        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {e}", "status_code": 500}
