@@ -3,15 +3,11 @@
 from openai import OpenAI, APIError
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
-from sympy import im
 
 from . import doc_retriever
 from . import doc_prompt_manager
 from . import doc_retriever_content
 
-import os
-import fitz
-import docx
 import traceback
 
 # 클라이언트 초기화 (settings.py에 OPENAI_API_KEY 설정)
@@ -146,17 +142,16 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
         }
 
     except APIError as e:
-        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
+        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})" # pylint: disable=no-member
         if e.code == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다."
-        
+
         print(f"[ERROR] 약관 분석 - OpenAI API Error: {e}")
         return {"success": False, "error": error_message}
-    
+
     except Exception as e:
-        print(f"[최종 오류 처리] 예상치 못한 일반 오류:")
-        traceback.print_exc() # 모든 종류의 예외에 대한 상세 정보 출력
-        return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {str(e)}")
+        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {str(e)}", "status_code": 500}
 
 # ----------------------------------------------------------
 
@@ -264,6 +259,7 @@ def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
 
         print("[6단계 완료] 통합 분석 완료. 요약 및 위험 분석 텍스트 준비됨.")
 
+        print("최종 답변")
         final_combined_summary = doc_retriever_content.format_contract_analysis_result(
             detected_contract_type, confidence, analysis_result_summary, analysis_result_risk, "한국어", chunk_count
         )
