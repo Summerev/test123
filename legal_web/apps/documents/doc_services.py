@@ -3,14 +3,11 @@
 from openai import OpenAI, APIError
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
-from sympy import im
 
 from . import doc_retriever
 from . import doc_prompt_manager
+from . import doc_retriever_content
 
-import os
-import fitz
-import docx
 import traceback
 
 # 클라이언트 초기화 (settings.py에 OPENAI_API_KEY 설정)
@@ -145,15 +142,169 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
         }
 
     except APIError as e:
-        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
+        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})" # pylint: disable=no-member
         if e.code == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다."
-        
+
         print(f"[ERROR] 약관 분석 - OpenAI API Error: {e}")
         return {"success": False, "error": error_message}
-    
-    except Exception as e:
-        print(f"[최종 오류 처리] 예상치 못한 일반 오류:")
-        traceback.print_exc() # 모든 종류의 예외에 대한 상세 정보 출력
-        return {"success": False, "error": "서버 내부 처리 중 오류가 발생했습니다.", "status_code": 500}
 
+    except Exception as e:
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {str(e)}")
+        return {"success": False, "error": f"서버 내부 처리 중 오류가 발생했습니다: {str(e)}", "status_code": 500}
+
+# ----------------------------------------------------------
+
+def analyze_contract_document(user, uploaded_file, session_id, language='ko'):
+    print("\n[함수 시작] 'analyze_contract_document'가 호출되었습니다.")
+    try:
+        # --- 1. 텍스트 추출 ---
+        print("[1단계] 파일에서 텍스트를 추출합니다...")
+        document_text = doc_retriever.get_document_text(uploaded_file)
+        if not document_text:
+            print("[1단계 오류] 문서에서 텍스트를 추출할 수 없습니다.")
+            return {"success": False, "error": "문서에서 텍스트를 추출할 수 없습니다.", "status_code": 400}
+        doc_type_name = "계약서"
+        print(f"[1단계 완료] 텍스트 추출 성공 (총 글자 수: {len(document_text)}자).")
+
+
+        # --- 2. 계약서 유형 감지 및 조항별 추출 ---
+        print("[2단계] 계약서 유형 감지 및 조항 추출 시작...")
+        detected_contract_type, confidence, contract_type_info = doc_retriever_content.detect_contract_type(document_text)
+        if confidence and isinstance(confidence, dict):
+            confidence_percentage = confidence.get('percentage', 0)
+            print(f"  - 감지된 계약서 유형: {detected_contract_type} (신뢰도: {confidence_percentage}%)")
+        else:
+            print(f"  - 감지된 계약서 유형: {detected_contract_type}")
+
+        document_chunks_raw = doc_retriever_content.extract_articles_with_content(document_text)
+        if not document_chunks_raw:
+             print("[2단계 오류] 텍스트를 유효한 조항 청크로 분할할 수 없습니다.")
+             return {"success": False, "error": "계약서 조항 분할에 실패했습니다.", "status_code": 400}
+        chunk_count = len(document_chunks_raw)
+        print(f"📋 총 {chunk_count}개 청크 생성 완료.")
+
+        # --- 3. 키워드 인덱스 생성 ---
+        print("[3단계] 키워드 인덱스 생성 중...")
+        keyword_index = doc_retriever_content.create_enhanced_keyword_index(document_chunks_raw, detected_contract_type)
+        print(f"[3단계 완료] 키워드 인덱스 생성 완료.")
+
+        # --- 4. 텍스트 강화 및 벡터화(임베딩) ---
+        print("[4단계] 텍스트 강화 및 임베딩 생성 시작...")
+        enhanced_texts, payloads = doc_retriever_content.enhance_document_texts(
+            document_chunks_raw, # 원본 청크 사용
+            user_id=user.id if user.is_authenticated else None, # AnonymousUser일 경우 None 전달
+            session_id=session_id
+        )
+        if not enhanced_texts or not payloads:
+            print("[4단계 오류] 텍스트 강화 또는 페이로드 생성 실패.")
+            return {"success": False, "error": "문서 텍스트 강화에 실패했습니다.", "status_code": 500}
+
+        print("  - 텍스트 벡터화(임베딩) 시작...")
+        # 여기서 정의된 openai_client를 사용
+        vectors = doc_retriever.get_embeddings(client, enhanced_texts)
+        if not vectors:
+            print("[4단계 오류] 벡터 생성 실패.")
+            return {"success": False, "error": "텍스트 임베딩 생성에 실패했습니다.", "status_code": 500}
+        print(f"[4단계 완료] 총 {len(vectors)}개 벡터 생성 완료.")
+
+        # --- 5. 벡터 저장 (FAISS 또는 Qdrant) ---
+        storage_data = {} # 결과에 포함될 스토리지 정보
+        print("[5단계] 벡터 저장 처리 (회원/비회원 구분)...")
+        if isinstance(user, AnonymousUser):
+            print("  - 비회원: FAISS 인덱스 생성 중...")
+            faiss_index = doc_retriever.create_faiss_index_from_vectors(vectors)
+            if faiss_index is None:
+                print("  - FAISS 인덱스 생성 실패.")
+                return {"success": False, "error": "FAISS 인덱스 생성 실패.", "status_code": 500}
+            storage_data = {"type": "faiss", "index": faiss_index, "chunks": enhanced_texts, "payloads": payloads}
+            print("  - 비회원용 FAISS 인덱스 및 청크 저장 완료.")
+        else:
+            print("  - 회원: Qdrant DB에 벡터 저장 시작...")
+            # qdrant_client가 미리 정의되었는지 확인
+            if qdrant_client is None:
+                print("  - Qdrant 클라이언트가 정의되지 않았습니다 (회원인데 DB 연결 실패).")
+                return {"success": False, "error": "데이터베이스 연결 오류 (Qdrant 클라이언트 없음).", "status_code": 500}
+
+            upsert_success = doc_retriever.upsert_vectors_to_qdrant(
+                client=qdrant_client,
+                chunks=enhanced_texts,
+                vectors=vectors,
+                user_id=user.id,
+                session_id=session_id,
+                payloads=payloads  # 계약서용 상세 페이로드 추가
+            )
+            if not upsert_success:
+                print("  - Qdrant DB에 벡터 저장 실패.")
+                return {"success": False, "error": "Qdrant에 벡터 저장 실패.", "status_code": 500}
+            storage_data = {"type": "qdrant"}
+            print(f"  - 회원(ID:{user.id})용 Qdrant DB에 저장 완료.")
+
+
+        # --- 6. 통합 분석 (요약 및 위험 분석) ---
+        print(f"[6단계] {language} 통일된 분석 시작 (한국어 기준 번역 방식)...")
+        analysis_result_tuple = doc_retriever_content.unified_analysis_with_translation(client, document_text, language)
+        if not isinstance(analysis_result_tuple, tuple) or len(analysis_result_tuple) != 2:
+            print(f"[6단계 오류] unified_analysis_with_translation이 예상치 못한 형식의 값을 반환했습니다: {analysis_result_tuple}")
+            return {"success": False,
+                    "error": "통합 분석 서비스에서 예상치 못한 반환 형식.",
+                    "status_code": 500}
+
+        analysis_result_summary = analysis_result_tuple[0] # 튜플의 첫 번째 요소가 요약
+        analysis_result_risk = analysis_result_tuple[1]    # 튜플의 두 번째 요소가 위험 분석
+
+        # 이전에 정의된 chunk_count 변수를 사용하거나 계산합니다.
+        # 예: chunk_count = len(document_chunks_raw)
+        chunk_count = len(document_chunks_raw) if 'document_chunks_raw' in locals() else 0 # 또는 enhanced_texts 등
+
+        print("[6단계 완료] 통합 분석 완료. 요약 및 위험 분석 텍스트 준비됨.")
+
+        print("최종 답변")
+        final_combined_summary = doc_retriever_content.format_contract_analysis_result(
+            detected_contract_type, confidence, analysis_result_summary, analysis_result_risk, "한국어", chunk_count
+        )
+
+
+        # --- 최종 성공 반환 (요청하신 형식) ---
+        print("\n[함수 종료] 'analyze_contract_document' 성공적으로 완료되었습니다.")
+        return {
+            "success": True,
+            "summary": final_combined_summary,
+            "storage_data": storage_data, # 기존 storage_data 변수 사용
+            "chunk_count": chunk_count # 새로 추가된 필드
+        }
+
+    # ★★★ 바깥쪽 최종 예외 처리 블록 ★★★
+    except APIError as e:
+        print("\n[최종 오류 처리] OpenAI API 에러를 감지했습니다.")
+        status_code = getattr(e, 'status_code', 500)
+        error_message = f"AI 모델 통신 오류 (상태 코드: {status_code})"
+
+        if getattr(e, 'code', None) == 'insufficient_quota':
+            error_message = "AI 서비스 사용 한도를 초과했습니다."
+
+        return {
+            "success": False,
+            "error": error_message,
+            "status_code": status_code
+        }
+
+    except Exception as e:
+        print(f"\n[최종 오류 처리] 예상치 못한 일반 에러를 감지했습니다: {str(e)}")
+
+        # 언어별 오류 메시지
+        error_messages = {
+            "한국어": f"❌ 처리 중 오류 발생: {str(e)}",
+            "日本語": f"❌ 処理中にエラーが発生しました: {str(e)}",
+            "中文": f"❌ 处理过程中发生错误: {str(e)}",
+            "English": f"❌ Error occurred during processing: {str(e)}",
+            "Español": f"❌ Error ocurrido durante el procesamiento: {str(e)}"
+        }
+        
+        localized_error = error_messages.get(language, error_messages["한국어"])
+        
+        return {
+            "success": False, 
+            "error": localized_error, 
+            "status_code": 500
+        }

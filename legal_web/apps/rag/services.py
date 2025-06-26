@@ -14,7 +14,7 @@ print("--- rag/services.py: Module imported ---")
 
 # --- 클라이언트 초기화 ---
 try:
-    print(f"--- rag/services.py: Loading API Key... ---")
+    print("--- rag/services.py: Loading API Key... ---")
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     qdrant_client = doc_retriever.get_qdrant_client()
     print("--- rag/services.py: Clients initialized successfully ---") # 2. 클라이언트 초기화 확인

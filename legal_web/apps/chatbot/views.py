@@ -68,7 +68,7 @@ def chat_api(request):
                     faiss_data = {'index': pickle.loads(base64.b64decode(encoded_index)), 'chunks': chunks}
                 else:
                     return JsonResponse({'error': '분석된 약관 정보가 없습니다. 파일을 다시 업로드해주세요.'}, status=400)
-            
+
             result = rag_services.get_answer(
                 user=user,
                 session_id=session_id,
