@@ -52,6 +52,13 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
     try:
         print(f"[RAG 시작] 질문: '{question}'")
 
+        search_query = question
+        if language != 'ko':
+            print(f"  - 질문을 한국어로 번역하여 검색을 수행합니다...")
+            # _translate_text 함수를 재활용하여 한국어로 번역
+            search_query = _translate_text(question, "한국어")
+            print(f"  - 번역된 검색어: '{search_query}'")
+
         # --- 1. 넓게 검색 (top_k=20) ---
         top_k_initial = 20
         
