@@ -117,7 +117,7 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
 
         # --- 4. 답변 생성  ---
         korean_prompt = prompt_manager.get_answer_prompt(context, question)
-        
+
         messages = [{"role": "system", "content": "You are a helpful legal AI assistant."}]
         for entry in chat_history:
             role = "user" if entry.get("sender") == "user" else "assistant"
@@ -137,7 +137,7 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
         return {"success": True, "answer": final_answer}
 
     except APIError as e:
-        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})"
+        error_message = f"AI 모델 통신 오류 (상태 코드: {e.status_code})" # pylint: disable=no-member
         if e.code == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과하여 답변을 생성할 수 없습니다."
         return {"success": False, "error": error_message}
