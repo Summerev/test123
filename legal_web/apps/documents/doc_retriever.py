@@ -61,7 +61,6 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
     # 첫 부분(조항 시작 전)이 비어있지 않다면 '서문' 등으로 처리
     if split_parts[0].strip():
         articles.append(("서문", split_parts[0].strip()))
-
     for i in range(1, len(split_parts), 2):
         article_title = split_parts[i].strip()
         article_content = split_parts[i+1].strip() if (i + 1) < len(split_parts) else ""
@@ -91,15 +90,43 @@ def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
 
     return final_chunk_list
 
-def get_embeddings(client, texts: list[str]):
-    # ... (배치 처리 로직이 포함된 안정적인 버전)
-    BATCH_SIZE = 100
+
+
+
+import time 
+
+def get_embeddings(client, texts: list[str]): 
+    """
+    텍스트 목록을 여러 배치로 나누어 OpenAI 임베딩 API를 호출합니다.
+    """
+    BATCH_SIZE = 100 
+    
     all_embeddings = []
+    
+    print(f"🔄 get_embeddings 함수 시작: {len(texts)}개 텍스트")
+    
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]
-        response = client.embeddings.create(input=batch, model="text-embedding-3-small")
-        all_embeddings.extend([np.array(e.embedding, dtype='float32') for e in response.data])
+        batch_num = i//BATCH_SIZE + 1
+        print(f"    - 배치 #{batch_num} 처리 중 ({len(batch)}개 청크)...")
+        
+        try:
+            response = client.embeddings.create(
+                input=batch,
+                model="text-embedding-3-small"
+            )           
+            # 결과 저장
+            batch_embeddings = [np.array(embedding.embedding, dtype='float32') for embedding in response.data]
+            all_embeddings.extend(batch_embeddings)
+
+        except Exception as e:
+            print(f"❌ get_embeddings 함수 오류 발생: {e}")
+            raise
+
+    print(f"🤖 OpenAI 임베딩 API 호출 성공: {len(all_embeddings)}개 벡터 생성")
+    print(f"🏁 get_embeddings 함수 종료: 벡터 차원 {len(all_embeddings[0]) if all_embeddings else 0}")
     return all_embeddings
+
 
 #  Qdrant 관련 함수 (회원용)
 # ======================================================================

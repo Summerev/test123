@@ -59,50 +59,56 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
             # 비회원 FAISS 검색
             if not faiss_data or 'index' not in faiss_data or 'chunks' not in faiss_data:
                 return {"success": False, "error": "분석된 문서 정보가 만료되었습니다."}
-            
             initial_chunks = doc_retriever.search_faiss_index(
-                index=faiss_data['index'],
-                chunks=faiss_data['chunks'],
-                client=client,
-                query=question,
-                top_k=top_k_initial
+                index=faiss_data['index'], chunks=faiss_data['chunks'], client=client,
+                query=question, top_k=top_k_initial
             )
         else:
             # 회원 Qdrant 검색
             initial_chunks = doc_retriever.search_qdrant(
-                client=qdrant_client,
-                embedding_client=client,
-                query=question,
-                user_id=user.id,
-                session_id=session_id,
-                top_k=top_k_initial
+                client=qdrant_client, embedding_client=client, query=question,
+                user_id=user.id, session_id=session_id, top_k=top_k_initial
             )
         
         print(f"  - 1차 검색 결과: {len(initial_chunks)}개의 청크를 가져왔습니다.")
+        print("\n--- [디버그] 1차 검색 결과 청크 내용 ---")
+        for i, chunk in enumerate(initial_chunks):
+            print(f"--- 후보 청크 #{i+1} ---")
+            print(chunk)
+            print("--------------------------")
+        print("--- [디버그] 1차 검색 내용 출력 끝 ---\n")
 
         # --- 2. 키워드 후처리 및 재정렬 ---
         article_match = re.search(r'(\d+)\s*조', question)
-        
+
+        final_context_chunks = [] # 최종적으로 사용할 컨텍스트 초기화
+
         if article_match and initial_chunks:
             article_number = article_match.group(1)
-            keyword = f"제{article_number}조"
-            print(f"  - 질문에서 키워드 '{keyword}'를 감지하여 결과를 재정렬합니다.")
+            keyword_pattern = rf'제\s*{article_number}\s*조'
+            print(f"  - 질문에서 키워드 패턴 '{keyword_pattern}'을 감지. 키워드 우선 검색을 수행합니다.")
             
-            with_keyword = []
-            without_keyword = []
+            # ★★★★★ 여기가 수정된 핵심 로직입니다 ★★★★★
+            keyword_results = []
             for chunk in initial_chunks:
-                if chunk.strip().startswith(keyword):
-                    with_keyword.append(chunk)
-                else:
-                    without_keyword.append(chunk)
+                # 청크의 첫 줄(메타데이터)에 키워드가 있는지 확인
+                if re.search(keyword_pattern, chunk.split('\n')[0]):
+                    keyword_results.append(chunk)
             
-            relevant_chunks = with_keyword + without_keyword
+            # 키워드로 찾은 결과가 있다면, 그것만을 최종 컨텍스트로 사용합니다.
+            if keyword_results:
+                print(f"  - 키워드 검색 결과: {len(keyword_results)}개의 정확한 청크를 찾았습니다.")
+                final_context_chunks = keyword_results
+            else:
+                # 키워드로 찾은게 없다면, 원래의 의미 기반 검색 결과 상위 5개를 사용합니다.
+                print(f"  - 키워드와 일치하는 청크를 찾지 못했습니다. 의미 기반 검색 결과를 사용합니다.")
+                final_context_chunks = initial_chunks[:5]
         else:
-            relevant_chunks = initial_chunks
+            # 질문에 'N조'가 없다면, 원래의 의미 기반 검색 결과 상위 5개를 사용합니다.
+            final_context_chunks = initial_chunks[:5]
+
         
         # --- 3. 최종 컨텍스트 선택 ---
-        final_context_chunks = relevant_chunks[:5] # 상위 5개만 사용
-        
         if not final_context_chunks:
             return {"success": True, "answer": "죄송합니다. 문서에서 질문과 관련된 정보를 찾을 수 없습니다."}
             
