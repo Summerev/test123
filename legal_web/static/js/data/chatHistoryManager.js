@@ -1,5 +1,5 @@
 // static/js/data/chatHistoryManager.js
-
+import { showModal } from '../ui/modalManager.js';
 import { $ } from '../utils/domHelpers.js';
 import { getTranslation } from './translation.js';
 import { addMessageToUI, toggleWelcomeMessage, renderRecentChats } from '../ui/chatUI.js';
@@ -157,34 +157,35 @@ export function loadChatHistoryFromStorage() {
 }
 
 export function clearAllChats() {
-    if (confirm(getTranslation('confirmClearChat'))) {
-        // ❌ 오류 원인 제거
-        // chatHistory = [];
+    showModal(
+        getTranslation('confirmClearChat'),
+        getTranslation('deleteAll'),
+        'danger',
+        () => {
+            // 내부 데이터 초기화
+            Object.keys(chat_session_info).forEach(key => delete chat_session_info[key]);
+            Object.keys(chatSessions).forEach(key => delete chatSessions[key]);
+            Object.keys(openTabs).forEach(key => delete openTabs[key]);
 
-        // 내부 데이터만 초기화
-        Object.keys(chat_session_info).forEach(key => delete chat_session_info[key]);
-        Object.keys(chatSessions).forEach(key => delete chatSessions[key]);
-        Object.keys(openTabs).forEach(key => delete openTabs[key]);
+            localStorage.removeItem('legalBotChatHistory');
+            localStorage.removeItem('chat_session_info');
+            localStorage.removeItem('chat_sessions');
 
-        localStorage.removeItem('legalBotChatHistory');
-        localStorage.removeItem('chat_session_info');
-        localStorage.removeItem('chat_sessions');
+            setActiveTab(null);
+            saveTabState();
+            loadChatHistoryFromStorage();
 
-        setActiveTab(null);
-        saveTabState();
-        loadChatHistoryFromStorage();
+            const chatInput = $('#chatInput');
+            const sendButton = $('#sendButton');
+            if (chatInput) chatInput.value = '';
+            if (sendButton) sendButton.disabled = true;
+            if (chatInput) chatInput.style.height = 'auto';
 
-        const chatInput = $('#chatInput');
-        const sendButton = $('#sendButton');
-        if (chatInput) chatInput.value = '';
-        if (sendButton) sendButton.disabled = true;
-        if (chatInput) chatInput.style.height = 'auto';
+            renderTabBar();
+            renderRecentChats(getChatSessionList());
 
-        alert(getTranslation('chatCleared'));
-
-        renderTabBar();
-        renderRecentChats(getChatSessionList());
-    }
+        }
+    );
 }
 
 // getChatHistory 함수는 특정 세션의 기록을 반환하도록 변경 (chatSessions 활용)
@@ -240,6 +241,40 @@ function deleteChatSession(sessionId) {
         chatMessages.innerHTML = '';
         switchTab(null); // 초기 상태
     }
+}
+
+export function exportAllChats() {
+    const data = localStorage.getItem('chat_sessions');
+    if (!data) {
+        console.warn('내보낼 채팅 데이터가 없습니다.');
+        return;
+    }
+
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chat_export.json';
+
+    // ✅ 모달이 닫히고 next tick에 다운로드하도록 지연
+    setTimeout(() => {
+        a.click();
+        URL.revokeObjectURL(url);
+    }, 10);
+}
+
+export function hasChatToExport() {
+    const currentTabId = getActiveTab();
+    const history = chatSessions[currentTabId] || [];
+
+    // user/bot 메시지만 필터링하고, text가 존재하는지 확인
+    const validMessages = history.filter(msg =>
+        (msg.sender === 'user' || msg.sender === 'bot') &&
+        msg.text && msg.text.trim() !== ''
+    );
+
+    return validMessages.length > 0;
 }
 
 // Named export로 deleteChatSession 내보내기

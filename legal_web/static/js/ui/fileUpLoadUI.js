@@ -287,9 +287,15 @@ function resetUploadForm() {
     // 안내 메시지 다시 표시
     if (fileInfoMessage) {
         fileInfoMessage.style.display = 'block';
-        fileInfoMessage.textContent = '(문서 유형을 먼저 선택해야 합니다.)';
+        fileInfoMessage.setAttribute('data-translate-key', 'fileTypeWarning'); // ✅ 번역 키 지정
+        fileInfoMessage.textContent = getTranslation('fileTypeWarning');  // ✅ 직접 번역값으로 넣기
     }
+
+    // ✅ 현재 언어 가져오기 (없으면 ko fallback)
+    const lang = window.currentLanguage || localStorage.getItem('legalBotLanguage') || 'ko';
+    applyTranslations(lang);
 }
+
 
 /**
  * 새 채팅방 생성 시 웰컴 메시지 표시
@@ -324,6 +330,8 @@ export function forceResetWelcomeMessage() {
     console.log('웰컴 메시지 강제 리셋 시작');
 
     // DOM 요소들을 다시 찾아서 확실히 초기화
+    const lang = window.currentLanguage || localStorage.getItem('legalBotLanguage') || 'ko';  // lang 정의
+
     const docTypeContract = document.getElementById('docTypeContract');
     const docTypeTerms = document.getElementById('docTypeTerms');
     const fileUpload = document.getElementById('fileUpload');
@@ -359,7 +367,9 @@ export function forceResetWelcomeMessage() {
     // 안내 메시지 복원
     if (fileInfoEl) {
         fileInfoEl.style.display = 'block';
-        fileInfoEl.textContent = '(문서 유형을 먼저 선택해야 합니다.)';
+        fileInfoEl.setAttribute('data-translate-key', 'fileTypeWarning'); // ✅ 번역 키 지정
+        fileInfoEl.textContent = '';  // ✅ 초기화
+        applyTranslations(lang);  // ✅ 정확한 언어로 번역 적용
     }
 
     console.log('웰컴 메시지 강제 리셋 완료');
