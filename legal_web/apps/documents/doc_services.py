@@ -100,12 +100,13 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
 
         # --- 3. 번역 ---
         print(f"\n[3단계] 결과를 '{language}' 언어로 번역합니다...")
-        final_summary_lang, risk_text_lang = final_summary_ko, risk_text_ko
+        
+        korean_full_analysis = f"## 📋 약관 핵심 분석\n\n{final_summary_ko}\n\n---\n\n## ⚠️ 주요 위험 요소 및 유의사항\n\n{risk_text_ko}"
+
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
-        if language in lang_map:
-            target_lang_name = lang_map[language]
-            final_summary_lang = _translate_text(final_summary_ko, target_lang_name)
-            risk_text_lang = _translate_text(risk_text_ko, target_lang_name)
+        target_lang_name = lang_map.get(language, "한국어")
+        
+        final_analysis_lang = _translate_text(korean_full_analysis, target_lang_name)
         print("[3단계 완료] 번역 성공.")
 
 
@@ -131,12 +132,11 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
                     
 
         # 5. 결과 반환
-        summary_text = f"📋 문서 요약\n\n{final_summary_lang}\n\n---\n\n⚠️ 위험 요소 식별\n\n{risk_text_lang}"
         
         print(f"[약관 분석] 완료: {uploaded_file.name}")
         return {
             "success": True,
-            "summary": summary_text,
+            "summary": final_analysis_lang,
             "storage_data": storage_data,
             "message": "약관 분석이 완료되었습니다."
         }

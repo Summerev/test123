@@ -42,53 +42,80 @@ def get_document_text(uploaded_file):
 
 # --- 텍스트 처리 및 벡터화 ---
 
+def recursive_split(text, separators, chunk_size):
+    """재귀적으로 텍스트를 나누는 헬퍼 함수"""
+    if len(text) <= chunk_size:
+        return [text]
+    
+    # 가장 우선순위 높은 구분자부터 시도
+    current_separator = separators[0]
+    next_separators = separators[1:]
+    
+    # 현재 구분자로 나눌 수 없으면, 다음 구분자로 시도
+    if current_separator == "" or not next_separators:
+        # 더 이상 나눌 구분자가 없으면, 글자 수로 강제 분할
+        return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+    # 구분자로 분할 시도
+    try:
+        parts = re.split(f'({current_separator})', text)
+    except re.error:
+        # 정규식이 아닌 일반 문자열로 분할
+        parts = text.split(current_separator)
+
+    chunks = []
+    current_chunk = ""
+    for part in parts:
+        if len(current_chunk) + len(part) <= chunk_size:
+            current_chunk += part
+        else:
+            # 현재 청크가 너무 길면, 더 작은 구분자로 다시 나눔
+            if current_chunk:
+                chunks.extend(recursive_split(current_chunk, next_separators, chunk_size))
+            current_chunk = part
+    if current_chunk:
+        chunks.extend(recursive_split(current_chunk, next_separators, chunk_size))
+        
+    return chunks
+
 def split_text_into_chunks_terms(text: str, chunk_size: int = 1500):
     """
-    1. '제N조'로 텍스트를 나눕니다.
-    2. 각 조항이 너무 길면 chunk_size에 맞춰 다시 자릅니다.
-    3. 모든 최종 청크에 출처(조항 제목)를 메타데이터로 추가합니다.
+    LangChain의 RecursiveCharacterTextSplitter와 유사한 방식으로,
+    여러 구분자를 사용하여 텍스트를 안정적으로 분할합니다.
     """
-    if not text:
+    if not text or not text.strip():
         return []
 
-    print(f"--- 'split_text_into_chunks_terms' 함수 실행 시작 (최대 청크 크기: {chunk_size}자) ---")
+    print(f"🔄 [최종 청킹 함수] 시작: chunk_size={chunk_size}")
 
-    # '제N조' 패턴으로 문서를 (제목, 내용) 쌍으로 분리
-    pattern = r'(제\s*\d+\s*조[^\n]*)'
-    split_parts = re.split(pattern, text)
-
-    articles = []
-    # 첫 부분(조항 시작 전)이 비어있지 않다면 '서문' 등으로 처리
-    if split_parts[0].strip():
-        articles.append(("서문", split_parts[0].strip()))
-    for i in range(1, len(split_parts), 2):
-        article_title = split_parts[i].strip()
-        article_content = split_parts[i+1].strip() if (i + 1) < len(split_parts) else ""
-        articles.append((article_title, article_content))
-
-    if not articles and text:
-        articles = [("문서 전체", text)]
-
-    print(f"  - '제N조' 패턴을 기준으로 문서를 {len(articles)}개의 조항/부분으로 1차 분할했습니다.")
-
-    # 각 조항을 재분할하며, 모든 청크에 메타데이터 추가
+    # 구분자 우선순위: 조항 > 문단 > 문장 > 공백
+    separators = [
+        r'\n제\s*\d+\s*조',  # 조항 (가장 큰 단위)
+        '\n\n',            # 문단
+        '\n',              # 줄바꿈
+        '. ',              # 문장
+        ' ',               # 단어
+        ''                 # 마지막 강제 분할
+    ]
+    
+    # 1. 재귀적 분할 수행
+    initial_chunks = recursive_split(text, separators, chunk_size)
+    
+    # 2. 메타데이터 추가 (각 청크가 어떤 조항에 속하는지 파악)
     final_chunks = []
-    for article_title, article_content in articles:
-        if not article_content.strip():
-            continue
+    current_article_title = "서문"
+    article_pattern = r'(제\s*\d+\s*조[^\n]*)'
 
-        if len(article_content) > chunk_size:
-            print(f"  - 정보: 긴 조항 '{article_title}' (길이: {len(article_content)})을/를 재분할합니다.")
-            for i in range(0, len(article_content), chunk_size):
-                sub_chunk_content = article_content[i : i + chunk_size]
-                final_chunks.append(f"참고 조항: {article_title}\n\n내용:\n{sub_chunk_content}")
-        else:
-            final_chunks.append(f"참고 조항: {article_title}\n\n내용:\n{article_content}")
-
-    final_chunk_list = [chunk for chunk in final_chunks if chunk.strip()]
-    print(f"--- 'split_text_into_chunks' 함수 종료. 최종 반환 청크 개수: {len(final_chunk_list)}개 ---")
-
-    return final_chunk_list
+    for chunk in initial_chunks:
+        match = re.search(article_pattern, chunk)
+        if match:
+            # 청크에서 새로운 조항 제목이 발견되면, 현재 조항 제목을 업데이트
+            current_article_title = match.group(1).strip()
+        
+        final_chunks.append(f"참고 조항: {current_article_title}\n\n내용:\n{chunk.strip()}")
+        
+    print(f"🏁 [최종 청킹 함수] 종료: {len(final_chunks)}개 청크 생성")
+    return final_chunks
 
 
 
@@ -329,3 +356,30 @@ def search_faiss_index(index: faiss.Index, chunks: list[str], client, query: str
     except Exception as e:
         print(f"❌ search_faiss_index 함수 오류 발생: {e}")
         raise
+
+
+
+def get_all_chunks_from_qdrant(client: QdrantClient, user_id: int, session_id: str):
+    """특정 사용자와 세션에 해당하는 모든 청크를 Qdrant에서 가져옵니다."""
+    print(f"🔄 Qdrant에서 모든 청크 로딩 시작: user_id={user_id}, session_id={session_id}")
+    try:
+        # scroll API를 사용하여 모든 포인트를 가져옵니다.
+        # 실제 운영에서는 데이터가 매우 클 경우 성능 문제가 있을 수 있습니다.
+        scrolled_points = client.scroll(
+            collection_name="legal_documents",
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(key="user_id", match=models.MatchValue(value=user_id)),
+                    models.FieldCondition(key="session_id", match=models.MatchValue(value=session_id)),
+                ]
+            ),
+            limit=1000, # 한 번에 가져올 개수
+            with_payload=True,
+            with_vectors=False
+        )
+        all_chunks = [point.payload['text'] for point in scrolled_points[0]]
+        print(f"✅ Qdrant에서 {len(all_chunks)}개 청크 로딩 완료.")
+        return all_chunks
+    except Exception as e:
+        print(f"❌ Qdrant에서 모든 청크 로딩 실패: {e}")
+        return []
