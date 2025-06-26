@@ -1,8 +1,7 @@
 import re
-
+import traceback
 from . import doc_retriever
 from . import translation_content
-from . import doc_retriever_content
 
 
 def extract_articles_with_content(text):
@@ -245,9 +244,9 @@ def unified_analysis_with_translation(client, text: str, target_language: str):
             print(f"ERROR: [unified_analysis_with_translation] 한국어 요약 생성 실패: {summary_result.get('error')}")
             error_msg = summary_result.get('error', '요약 생성 실패')
             # 폴백 텍스트 사용
-            fallback_summary = summary_result.get('summary_text', translation_content.fallback_korean_summary())
+            fallback_summary = summary_result.get('summary_text')
             return fallback_summary, error_msg
-            
+
         korean_summary_text = summary_result.get('summary_text', '')
 
         # 위험 분석 생성 - 모듈 호출 방식을 직접 함수 호출로 변경
@@ -256,7 +255,7 @@ def unified_analysis_with_translation(client, text: str, target_language: str):
             print(f"ERROR: [unified_analysis_with_translation] 한국어 위험 분석 실패: {risk_result.get('error')}")
             error_msg = risk_result.get('error', '위험 분석 실패')
             # 폴백 텍스트 사용
-            fallback_risk = risk_result.get('risk_analysis_text', translation_content.fallback_korean_risk_analysis({}))
+            fallback_risk = risk_result.get('risk_analysis_text')
             return korean_summary_text, fallback_risk
             
         korean_risk_analysis_text = risk_result.get('risk_analysis_text', '')
@@ -297,12 +296,244 @@ def unified_analysis_with_translation(client, text: str, target_language: str):
 
     except Exception as e:
         print(f"CRITICAL ERROR: [unified_analysis_with_translation] 함수 전체에서 예외 발생: {e}")
-        import traceback
+
         traceback.print_exc()
         # 오류 발생시에도 최소한의 텍스트를 반환
         fallback_summary = translation_content.fallback_korean_summary()
         fallback_risk = translation_content.fallback_korean_risk_analysis({})
         return fallback_summary, fallback_risk
+
+def generate_contract_type_info(detected_contract_type, confidence, language):
+    """
+    7단계: 계약서 유형 정보 생성 및 언어별 번역
+    
+    Args:
+        detected_contract_type: 감지된 계약서 유형
+        confidence: 신뢰도 정보 (dict)
+        language: 목표 언어
+    
+    Returns:
+        str: 포맷팅된 계약서 유형 정보
+    """
+    print("[7단계] 계약서 유형 정보 생성 중...")
+    
+    type_info = ""
+    if detected_contract_type and confidence:
+        # 기본 한국어 유형 정보 생성
+        type_info_korean = f"""## 🎯 감지된 계약서 유형
+**{detected_contract_type}** - {CONTRACT_TYPE_DESCRIPTIONS.get(detected_contract_type, '')}
+- 매칭도: {confidence.get('percentage', 0)}% ({confidence.get('score', 0)}개 용어 매칭)
+- 주요 매칭 용어: {', '.join(confidence.get('matched_terms', [])[:5])}{'...' if len(confidence.get('matched_terms', [])) > 5 else ''}
+"""
+        
+        # 언어별 번역 처리
+        if language != "한국어":
+            try:
+                # 유형 정보 번역
+                type_info = translation_content.translate_to_target_language(type_info_korean, language, "유형정보")
+            except Exception as e:
+                print(f"[7단계 경고] 유형 정보 번역 중 오류: {str(e)}")
+                type_info = type_info_korean  # 번역 실패시 한국어 사용
+        else:
+            type_info = type_info_korean
+    
+    print("[7단계 완료] 계약서 유형 정보 생성 완료.")
+    return type_info
+
+
+def get_section_titles_by_language(language):
+    """
+    8단계: 언어별 섹션 제목 반환
+    
+    Args:
+        language: 목표 언어
+    
+    Returns:
+        dict: 언어별 섹션 제목 딕셔너리
+    """
+    print("[8단계] 언어별 섹션 제목 설정...")
+    
+    section_titles = {
+        "한국어": {
+            "summary": "## 📋 문서 요약", 
+            "risk": "## ⚠️ 위험 분석", 
+            "complete": "✅ **분석 완료**"
+        },
+        "日本語": {
+            "summary": "## 📋 文書要約", 
+            "risk": "## ⚠️ リスク分析", 
+            "complete": "✅ **分析完了**"
+        },
+        "中文": {
+            "summary": "## 📋 文档摘要", 
+            "risk": "## ⚠️ 风险分析", 
+            "complete": "✅ **分析完成**"
+        },
+        "English": {
+            "summary": "## 📋 Document Summary", 
+            "risk": "## ⚠️ Risk Analysis", 
+            "complete": "✅ **Analysis Complete**"
+        },
+        "Español": {
+            "summary": "## 📋 Resumen del Documento", 
+            "risk": "## ⚠️ Análisis de Riesgos", 
+            "complete": "✅ **Análisis Completo**"
+        }
+    }
+    
+    titles = section_titles.get(language, section_titles["한국어"])
+    print(f"[8단계 완료] '{language}' 언어 섹션 제목 설정 완료.")
+    return titles
+
+
+def extract_legal_terms_explanation(summary_text, risk_text, language):
+    """
+    9단계: 한국어인 경우에만 어려운 용어 설명 추가
+    
+    Args:
+        summary_text: 요약 텍스트
+        risk_text: 위험 분석 텍스트
+        language: 언어
+    
+    Returns:
+        str: 법률 용어 설명 (한국어가 아니면 빈 문자열)
+    """
+    print("[9단계] 법률 용어 설명 추출...")
+    
+    legal_terms_explanation = ""
+    if language == "한국어":
+        try:
+            # extract_legal_terms_from_korean_text 함수 호출
+            legal_terms_explanation = extract_legal_terms_from_korean_text(summary_text + risk_text)
+            print("[9단계 완료] 한국어 법률 용어 설명 추출 완료.")
+        except Exception as e:
+            print(f"[9단계 경고] 법률 용어 추출 중 오류: {str(e)}")
+            legal_terms_explanation = ""
+    else:
+        print("[9단계 건너뜀] 한국어가 아니므로 법률 용어 설명 생략.")
+    
+    return legal_terms_explanation
+
+
+def create_final_contract_summary(type_info, titles, summary_text, risk_text, legal_terms_explanation, chunk_count):
+    """
+    10단계: 최종 요약 텍스트 조합
+    
+    Args:
+        type_info: 계약서 유형 정보
+        titles: 언어별 섹션 제목
+        summary_text: 요약 텍스트
+        risk_text: 위험 분석 텍스트
+        legal_terms_explanation: 법률 용어 설명
+        chunk_count: 청크 개수
+    
+    Returns:
+        str: 최종 조합된 요약 텍스트
+    """
+    print("[10단계] 최종 요약 텍스트 조합...")
+
+    final_combined_summary = f"""{type_info}
+
+{titles['summary']}
+{summary_text}
+
+{titles['risk']}
+{risk_text}{legal_terms_explanation}
+
+---
+{titles['complete']}: {chunk_count}개 조항 분석 | **강화된 RAG 검색** | **문서 기반 우선 답변**"""
+    
+    print("[10단계 완료] 최종 요약 텍스트 조합 완료.")
+    return final_combined_summary
+
+
+def format_contract_analysis_result(detected_contract_type, confidence, analysis_result_summary, analysis_result_risk, language, chunk_count):
+    """
+    통합 함수: 7~10단계를 모두 처리하는 메인 포맷팅 함수
+    
+    Args:
+        detected_contract_type: 감지된 계약서 유형
+        confidence: 신뢰도 정보
+        analysis_result_summary: 번역된 요약 텍스트
+        analysis_result_risk: 번역된 위험 분석 텍스트
+        language: 목표 언어
+        chunk_count: 청크 개수
+    
+    Returns:
+        str: 최종 포맷팅된 분석 결과
+    """
+    print("\n[포맷팅 단계] 계약서 분석 결과 포맷팅 시작...")
+    
+    try:
+        # 7단계: 계약서 유형 정보 생성
+        type_info = generate_contract_type_info(detected_contract_type, confidence, language)
+        
+        # 8단계: 언어별 섹션 제목 설정
+        titles = get_section_titles_by_language(language)
+        
+        # 9단계: 법률 용어 설명 추출
+        legal_terms_explanation = extract_legal_terms_explanation(analysis_result_summary, analysis_result_risk, language)
+        
+        # 10단계: 최종 요약 텍스트 조합
+        final_combined_summary = create_final_contract_summary(
+            type_info, titles, analysis_result_summary, analysis_result_risk, legal_terms_explanation, chunk_count
+        )
+        
+        print("[포맷팅 단계 완료] 계약서 분석 결과 포맷팅 성공.")
+        return final_combined_summary
+        
+    except Exception as e:
+        print(f"[포맷팅 단계 오류] 포맷팅 중 오류 발생: {str(e)}")
+        
+        # 오류 발생시 기본 포맷으로 반환
+        error_messages = {
+            "한국어": f"❌ 포맷팅 중 오류 발생: {str(e)}",
+            "日本語": f"❌ フォーマット中にエラーが発生しました: {str(e)}",
+            "中文": f"❌ 格式化过程中发生错误: {str(e)}",
+            "English": f"❌ Error occurred during formatting: {str(e)}",
+            "Español": f"❌ Error ocurrido durante el formateo: {str(e)}"
+        }
+        
+        fallback_summary = f"""## 📋 문서 요약
+{analysis_result_summary}
+
+## ⚠️ 위험 분석
+{analysis_result_risk}
+
+---
+✅ **분석 완료**: {chunk_count}개 조항 분석
+
+{error_messages.get(language, error_messages["한국어"])}"""
+
+        return fallback_summary
+
+
+def extract_legal_terms_from_korean_text(text):
+    """한국어 텍스트에서만 어려운 법률 용어 추출 및 설명 제공"""
+    legal_terms = IMPROVED_LANGUAGES["한국어"]["legal_terms"]
+    found_terms = {}
+
+    for term, explanation in legal_terms.items():
+        if term in text:
+            found_terms[term] = explanation
+        elif len(term) >= 3:
+            pattern = term + r'[은는이가을를의에서로부터까지와과도나며으로써에게에서부터]'
+            if re.search(pattern, text):
+                found_terms[term] = explanation
+
+    if found_terms:
+        explanations = []
+        sorted_terms = sorted(found_terms.items(), key=lambda x: len(x[0]), reverse=True)
+
+        for term, explanation in sorted_terms:
+            explanations.append(f"**{term}**: {explanation}")
+
+        return f"""
+
+## 📚 어려운 용어 설명
+{chr(10).join(explanations)}"""
+
+    return ""
 
 
 CONTRACT_TYPES_TERMS = {
@@ -349,4 +580,60 @@ CONTRACT_TYPE_DESCRIPTIONS = {
     "건설공사계약서": "건설공사의 시행에 관한 계약서",
     "임의규약계약서": "당사자 간의 특별한 약정에 관한 계약서",
     "투자계약서": "투자와 지분참여에 관한 계약서"
+}
+
+IMPROVED_LANGUAGES = {
+    "한국어": {
+        "system_prompt": """당신은 계약서 전문 해석 AI입니다. 다음 5가지 기능을 수행합니다:
+1. 계약서 조항 해석 - 복잡한 조항을 쉽게 설명
+2. 법률 용어 설명 - 어려운 용어를 일반인이 이해하기 쉽게 설명
+3. 문서 요약 - 핵심 내용을 간단명료하게 정리
+4. 조건 분석 - 계약 조건과 의무사항 분석
+5. 위험 요소 식별 - 불리한 조건이나 주의사항 파악
+
+**중요한 규칙**:
+- 제공된 계약서 내용만을 바탕으로 정확하게 답변하세요
+- 일반적인 법률 지식이 아닌 이 계약서의 구체적인 조항을 설명하세요
+- 계약서에 없는 내용은 추측하지 마세요
+- 반드시 한국어로만 답변하세요
+
+법률 용어는 원문 그대로 사용하되, 일반인이 이해하기 쉽게 설명하세요.""",
+
+        "off_topic_response": "죄송합니다. 업로드하신 계약서 내용에 대해서만 답변드릴 수 있습니다. 계약서와 관련된 질문을 해주세요.",
+        "no_results_response": "해당 내용을 계약서에서 찾을 수 없습니다. 계약서에 실제로 포함된 조항이나 내용으로 다시 질문해주세요.",
+        "language_enforcement": "반드시 한국어로만 답변하세요.",
+
+        "legal_terms": {
+            "해지": "계약을 중간에 끝내는 것",
+            "위반": "약속이나 규정을 어기는 것",
+            "배상": "손해를 보상해주는 것",
+            "이행": "약속한 것을 실제로 지키는 것",
+            "귀책사유": "잘못의 원인이 되는 이유",
+            "임대인": "집이나 건물을 빌려주는 사람",
+            "임차인": "집이나 건물을 빌리는 사람",
+            "보증금": "계약을 보장하기 위해 미리 맡기는 돈",
+            "연체료": "정해진 기한을 넘겨서 내는 벌금",
+            "원상복구": "원래 상태로 되돌리는 것"
+        }
+    },
+
+    "English": {
+        "off_topic_response": "I can only answer questions about the uploaded contract content. Please ask contract-related questions.",
+        "no_results_response": "That content cannot be found in the contract. Please ask again with clauses or content actually included in the contract.",
+    },
+
+    "日本語": {
+        "off_topic_response": "申し訳ございませんが、アップロードされた契約書内容についてのみ回答できます。契約書に関連する質問をしてください。",
+        "no_results_response": "その内容は契約書に見つかりません。契約書に実際に含まれている条項や内容で再度質問してください。",
+    },
+
+    "中文": {
+        "off_topic_response": "抱歉，只能回答上传的合同内容相关问题。请提出与合同相关的问题。",
+        "no_results_response": "在合同中找不到该内容。请用合同中实际包含的条款或内容重新提问。",
+    },
+
+    "Español": {
+        "off_topic_response": "Solo puedo responder preguntas sobre el contenido del contrato subido. Por favor haga preguntas relacionadas con el contrato.",
+        "no_results_response": "Ese contenido no se puede encontrar en el contrato. Por favor pregunte nuevamente con cláusulas o contenido realmente incluido en el contrato.",
+    }
 }

@@ -116,7 +116,7 @@ def enhanced_korean_based_risk_analysis(client, text):
         if getattr(e, 'code', None) == 'insufficient_quota':
             error_message = "AI 서비스 사용 한도를 초과했습니다 (위험분석)."
         
-        fallback_text = fallback_korean_risk_analysis({})
+        fallback_text = fallback_korean_risk_analysis({risk_info})
         return {
             "success": False,
             "error": error_message,
@@ -129,7 +129,7 @@ def enhanced_korean_based_risk_analysis(client, text):
         import traceback
         traceback.print_exc()
         
-        fallback_text = fallback_korean_risk_analysis({})
+        fallback_text = fallback_korean_risk_analysis({risk_info})
         return {
             "success": False,
             "error": f"한국어 위험분석 생성 중 예기치 않은 오류 발생: {str(e)}",
