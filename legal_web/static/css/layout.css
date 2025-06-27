@@ -455,6 +455,10 @@ body.dark-mode .menu-header:hover {
   opacity: 1;
 }
 
+.chat-item .menu-btn.persistent {
+  opacity: 1;
+}
+
 #recentChatsList {
   list-style: none;
   /* ul 자체에 불릿 없애기 */
