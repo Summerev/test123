@@ -14,27 +14,80 @@ import traceback
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 qdrant_client = doc_retriever.get_qdrant_client()
 
-def _translate_text(text: str, target_lang_name: str) -> str:
+import re
+
+
+
+def _translate_text(text: str, language: str) -> str:
     """
-    주어진 텍스트를 지정된 언어로 번역하는 내부 함수.
+    doc_prompt_manager에서 언어별 프롬프트 템플릿을 가져와 번역하고,
+    후처리로 반복되는 괄호 설명을 제거합니다.
     """
-    if not text or target_lang_name == "한국어":
+    if not text or language == 'ko':
         return text
+
+    # 1. doc_prompt_manager에서 'en' 같은 키로 1차 딕셔너리를 가져옵니다.
+    prompt_template_dict = doc_prompt_manager.TRANSLATION_PROMPTS.get(language)
+    
+    if prompt_template_dict and "translation_prompt_template" in prompt_template_dict:
+        prompt = prompt_template_dict["translation_prompt_template"].format(text=text)
+    else:
+        # 템플릿을 못 찾으면 기본 프롬프트 사용
+        print(f"  - Warning: '{language}'에 대한 전용 번역 프롬프트를 찾지 못해 기본 프롬프트를 사용합니다.")
+        lang_name_map = {'en': 'English', 'ja': 'Japanese', 'zh': 'Chinese', 'es': 'Spanish'}
+        target_lang_name = lang_name_map.get(language, language)
+        prompt = f"Translate the following Korean text to {target_lang_name}:\n\n{text}"
+
     try:
-        prompt = f"다음 텍스트를 {target_lang_name}로 자연스럽게 번역해주세요. 원문의 서식(줄바꿈, 글머리 기호 등)을 최대한 유지해주세요:\n\n---\n{text}"
+        # 4. API 호출
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2, # 번역의 일관성을 위해 낮은 온도로 설정
+            temperature=0.1,
         )
-        return response.choices[0].message.content.strip()
-    except APIError as e:
-        print(f"OpenAI API Error during translation: {e}")
-        # API 오류 발생 시, 번역 실패 메시지와 함께 원문 반환
-        return f"({target_lang_name} 번역 실패: API 오류) {text}"
+        translated_text = response.choices[0].message.content.strip()
+
+        # 5. 후처리 로직
+        print("  - 번역 완료. 후처리 시작...")
+
+        # ★★★★★ 여기가 핵심 후처리 로직입니다 ★★★★★
+        # 후처리 대상 용어와 그 패턴 정의
+        terms_to_clean = {
+            'contract': r'(contracts?)\s*\(.*?\)',
+            'damages': r'(damages?)\s*\(.*?\)',
+            # 필요한 다른 용어를 여기에 추가할 수 있습니다.
+        }
+
+        cleaned_text = translated_text
+        for term, pattern in terms_to_clean.items():
+            # 1. 괄호 설명을 포함한 모든 매칭 결과를 찾습니다.
+            matches = list(re.finditer(pattern, cleaned_text, re.IGNORECASE))
+
+            # 2. 만약 2개 이상 발견되었다면 (즉, 반복이 있다면)
+            if len(matches) > 1:
+                # 3. 첫 번째 매칭 결과는 그대로 둡니다.
+                first_match_end_pos = matches[0].end()
+                first_part = cleaned_text[:first_match_end_pos]
+                
+                # 4. 첫 번째 매칭 이후의 텍스트에서만, 패턴을 찾아 괄호 없는 단어로 교체합니다.
+                remaining_part = cleaned_text[first_match_end_pos:]
+                
+                # re.sub의 세 번째 인자 count=... 를 사용하지 않아 모든 매칭을 교체
+                cleaned_remaining_part = re.sub(pattern, r'\1', remaining_part, flags=re.IGNORECASE)
+
+                # 5. 두 부분을 다시 합칩니다.
+                cleaned_text = first_part + cleaned_remaining_part
+                print(f"    - '{term}'에 대한 반복 설명 {len(matches) - 1}개를 성공적으로 제거했습니다.")
+
+        return cleaned_text.strip()
+
     except Exception as e:
-        print(f"Unexpected error during translation: {e}")
-        return f"({target_lang_name} 번역 실패: 시스템 오류) {text}"
+        print(f"Translation Error for {language}: {e}")
+        return f"(Translation to {language} failed) {text}"
+
+
+    
+
 
 # 약관 
 def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_type='terms'):
@@ -60,7 +113,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
             for i, chunk in enumerate(summary_chunks):
                 summary_prompt = doc_prompt_manager.get_summarize_chunk_terms_prompt(chunk, doc_type_name)
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo", messages=[{"role": "user", "content": summary_prompt}],
+                    model="gpt-4o-mini", messages=[{"role": "user", "content": summary_prompt}],
                     max_tokens=300, temperature=0.3
                 )
                 individual_summaries.append(response.choices[0].message.content)
@@ -76,7 +129,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
                     batch = current_summaries[i:i+10]
                     reduce_prompt = doc_prompt_manager.get_combine_summaries_terms_prompt(batch, doc_type_name)
                     intermediate_summary = client.chat.completions.create(
-                        model="gpt-3.5-turbo", messages=[{"role": "user", "content": reduce_prompt}],
+                        model="gpt-4o-mini", messages=[{"role": "user", "content": reduce_prompt}],
                         max_tokens=1500, temperature=0.5
                     ).choices[0].message.content
                     next_level_summaries.append(intermediate_summary)
@@ -88,7 +141,7 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
             # --- 2-3. 위험 요소 분석 ---
             risk_text_ko_prompt = doc_prompt_manager.get_risk_factors_terms_prompt(document_text)
             risk_text_ko = client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[{"role": "user", "content": risk_text_ko_prompt}],
+                model="gpt-4o-mini", messages=[{"role": "user", "content": risk_text_ko_prompt}],
                 max_tokens=1000, temperature=0.3
             ).choices[0].message.content
             print("  - [2단계 완료] 위험 요소 분석 완료")
@@ -100,13 +153,11 @@ def analyze_terms_document(user, uploaded_file, session_id, language='ko', doc_t
 
         # --- 3. 번역 ---
         print(f"\n[3단계] 결과를 '{language}' 언어로 번역합니다...")
-        
-        korean_full_analysis = f"## 📋 약관 핵심 분석\n\n{final_summary_ko}\n\n---\n\n## ⚠️ 주요 위험 요소 및 유의사항\n\n{risk_text_ko}"
+        korean_full_analysis = f"## 📋 Key Analysis of Terms and Conditions\n\n{final_summary_ko}\n\n---\n\n## ⚠️ Major Risk Factors and Precautions\n\n{risk_text_ko}"
 
-        lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
-        target_lang_name = lang_map.get(language, "한국어")
+        # ★★★★★ _translate_text 함수에 'language' 변수를 그대로 전달합니다 ★★★★★
+        final_analysis_lang = _translate_text(korean_full_analysis, language)
         
-        final_analysis_lang = _translate_text(korean_full_analysis, target_lang_name)
         print("[3단계 완료] 번역 성공.")
 
 

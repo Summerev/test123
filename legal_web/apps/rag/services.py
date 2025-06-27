@@ -24,18 +24,37 @@ except Exception as e:
 
 
 
+import re
+
 def _translate_text(text: str, target_lang_name: str) -> str:
     """
-    주어진 텍스트를 지정된 언어로 번역하는 내부 함수.
+    텍스트를 번역한 후, 반복되는 괄호 설명을 제거하는 후처리 로직을 추가합니다.
     """
-    print("--- rag/services.py: get_answer function started ---")
-    
-    if not text or target_lang_name == "한국어":
+    if not text:
+        return ""
+    if target_lang_name == "한국어":
         return text
     try:
-        prompt = f"다음 텍스트를 {target_lang_name}로 자연스럽게 번역해주세요:\n\n---\n{text}"
+        prompt = f"""
+# 절대적 지시사항:
+당신은 매우 지능적이고 전문적인 법률 문서 번역가입니다. 아래 [원본 한국어 텍스트]를 {target_lang_name}로 번역해주세요.
+
+# 엄격한 번역 규칙 (반드시 모두 준수):
+1.  모든 한국어 텍스트를 {target_lang_name}로 완벽하게 번역해야 합니다.
+2.  결과물에는 어떠한 경우에도 한국어가 남아있으면 안 됩니다.
+3.  **특정 법률 용어(예: contract, damages)에 대한 부가 설명(괄호 안의 정의 등)은, 전체 문서에서 해당 용어가 '처음 등장할 때 단 한 번만' 추가할 수 있습니다.**
+4.  **이미 설명한 용어가 다시 나오면, 그 다음부터는 오직 번역된 단어(예: contract)만 사용하고 부가 설명은 절대 반복하지 마세요.**
+5.  원본의 마크다운 구조(줄바꿈, #, - 등)는 그대로 유지해주세요.
+
+---
+[원본 한국어 텍스트]:
+{text}
+---
+
+위 규칙을 반드시 지켜서, 자연스럽고 전문적인 번역 결과물만 출력해주세요.
+"""
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
         )
@@ -120,7 +139,7 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
             messages.append({"role": role, "content": entry.get("text")})
         messages.append({"role": "user", "content": korean_prompt})
 
-        response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages, max_tokens=700, temperature=0.5)
+        response = client.chat.completions.create(model="gpt-4o-mini", messages=messages, max_tokens=700, temperature=0.5)
         answer_ko = response.choices[0].message.content
 
         # --- 4. 번역 ---
@@ -128,7 +147,7 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
         lang_map = {'en': 'English', 'es': 'Spanish', 'ja': '일본어', 'zh': '중국어'}
         if language in lang_map:
             target_lang_name = lang_map[language]
-            final_answer = _translate_text(answer_ko, target_lang_name)
+            final_answer = _translate_text(answer_ko, language_code=language)
         
         return {"success": True, "answer": final_answer}
 

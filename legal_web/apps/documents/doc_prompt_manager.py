@@ -1,11 +1,62 @@
 # teamproject/legal_web/apps/documents/doc_prompt_manager.py
 
+
+TRANSLATION_PROMPTS = {
+    "ko": { 
+        "translation_prompt_template": None,
+    },
+    "en": {
+        "translation_prompt_template": """
+
+# ABSOLUTE INSTRUCTION:
+You are an expert legal document translator. Translate the following [Original Korean Text] into English.
+# Strict Translation Rules (MUST FOLLOW):
+1. Translate ALL Korean text into perfect, natural English.
+2. The final output MUST NOT contain any Korean characters.
+3. **Crucially, DO NOT add any extra explanations, definitions in parentheses, or any content that was not in the original text.**
+4. Maintain the original markdown structure precisely.
+
+---
+[Original Korean Analysis]:
+{text}
+---
+
+Now, provide the professional {language_code} translation.
+""",
+    },
+    "ja": {
+        "translation_prompt_template": """
+# 絶対的指示：
+あなたは専門的な法律文書の翻訳家です。以下の[原文韓国語テキスト]を日本語に翻訳してください。
+
+# 厳格な翻訳ルール（必ず守ること）：
+1. すべての韓国語テキストを完璧で自然な日本語に翻訳しなければなりません。
+2. 結果物にはいかなる場合も韓国語が含まれていてはなりません。
+3. **重要：括弧内に定義を追加するなど、原文になかった解説や内容を絶対に追加しないでください。**（例：「계약」→「契約」(O)、「契約(法的に拘束力のある合意...)」(X)）
+4. 元のマークダウン構造（改行、#、- など）を正確に維持してください。
+
+---
+[原文韓国語テキスト]:
+{text}
+---
+
+上記のルールを厳守して翻訳し、翻訳されたテキストのみを出력してください。
+""",
+    },
+    "zh": { ... }, # 중국어용 프롬프트
+    "es": { ... }, # 스페인어용 프롬프트
+}
+
+
 # --- 약관 문서 조각 요약 프롬프트 ---
 def get_summarize_chunk_terms_prompt(chunk_text, doc_type_name):
     return f"""
-다음 {doc_type_name} 조항/내용을 3~5문장으로 간결하게 요약해 주세요. 법률 용어는 쉬운 말로 풀어서 설명해 주세요.
+# 지시: 아래 [원문]의 핵심 내용을 3~5 문장으로 간결하게 요약하세요.
+# 규칙:
+# 1. 원문의 단어와 표현을 최대한 그대로 사용하세요.
+# 2. 당신의 해석이나 부가적인 설명을 추가하지 마세요. 오직 요약만 하세요.
 
-[원문 {doc_type_name} 조각]
+[원문 {doc_type_name} 조각]:
 {chunk_text}
 """
 
@@ -16,6 +67,7 @@ def get_combine_summaries_terms_prompt(text_summary: str, doc_type_name: str = "
     """
     return f"""
 당신은 서비스 이용약관을 분석하는 최고의 전문가입니다. 아래 제공된 [약관 핵심 내용]을 바탕으로, 사용자가 반드시 알아야 할 내용들을 담은 최종 분석 보고서를 작성해주세요.
+[약관 핵심 내용]에 없는 내용은 절대 추측해서 작성하지 마세요.
 
 # 분석 보고서 필수 포함 내용 (이 구조를 반드시 따르세요):
 
@@ -78,3 +130,60 @@ def get_risk_factors_terms_prompt(full_text: str):
 ---
 위 항목들을 중심으로 위험 요소를 분석하고, 관련 조항 번호를 반드시 명시하여 설명해주세요.
 """
+
+
+'''
+TRANSLATION_PROMPTS_LOCAL = {
+    "ko": { 
+        "translation_prompt_template": None,
+    },
+    "en": {
+        "translation_prompt_template": """
+
+# Your Role:
+You are an expert legal and business translator. Your task is to translate the following [Original Korean Analysis] into fluent, professional {language_code}.
+
+# Core Instruction:
+Translate the content naturally, as if it were originally written in {language_code}. Do not sound like a machine translation.
+
+# Critical Rule - NO Parenthetical Definitions:
+- **You MUST NOT add explanatory definitions in parentheses.**
+- **Correct Example:** `...the company is not liable for damages.`
+- **Incorrect Example:** `...the company is not liable for damages (monetary compensation for loss...).`
+- Simply translate the term. That's it.
+
+# Other Rules:
+- Translate all Korean text. The final output must only be in {language_code}.
+- Keep the original markdown structure (headings, lists, etc.).
+
+---
+[Original Korean Analysis]:
+{text}
+---
+
+Now, provide the professional {language_code} translation.
+""",
+    },
+    "ja": {
+        "translation_prompt_template": """
+# 絶対的指示：
+あなたは専門的な法律文書の翻訳家です。以下の[原文韓国語テキスト]を日本語に翻訳してください。
+
+# 厳格な翻訳ルール（必ず守ること）：
+1. すべての韓国語テキストを完璧で自然な日本語に翻訳しなければなりません。
+2. 結果物にはいかなる場合も韓国語が含まれていてはなりません。
+3. **重要：括弧内に定義を追加するなど、原文になかった解説や内容を絶対に追加しないでください。**（例：「계약」→「契約」(O)、「契約(法的に拘束力のある合意...)」(X)）
+4. 元のマークダウン構造（改行、#、- など）を正確に維持してください。
+
+---
+[原文韓国語テキスト]:
+{text}
+---
+
+上記のルールを厳守して翻訳し、翻訳されたテキストのみを出력してください。
+""",
+    },
+    "zh": { ... }, # 중국어용 프롬프트
+    "es": { ... }, # 스페인어용 프롬프트
+}
+'''
