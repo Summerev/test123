@@ -336,31 +336,51 @@ export function renderRecentChats(chatList) {
     chatList.forEach(chat => {
         const li = document.createElement('li');
         li.className = 'chat-item';
-        li.dataset.chatId = chat.id; // sessionId로 chat.id 할당
+        li.dataset.chatId = chat.id;
         li.textContent = chat.title;
 
         // 점 3개 버튼
         const btn = document.createElement('button');
         btn.className = 'menu-btn';
         btn.textContent = '⋯';
+
         btn.addEventListener('click', e => {
             e.stopPropagation();
+
             closeAllContextMenus();
 
-            // 1) 메뉴 생성
-            const menu = createContextMenu(chat.id, chat.title);
+            // ✅ 기존 모든 persistent 클래스 제거 (오직 하나만 유지)
+            document.querySelectorAll('.menu-btn.persistent').forEach(btn => {
+                btn.classList.remove('persistent');
+            });
 
-            // 2) li 위치 정보 가져오기
+            const menu = createContextMenu(chat.id, chat.title);
             const rect = li.getBoundingClientRect();
 
-            // 3) 메뉴를 body에 붙이고, 절대좌표 찍기
             menu.style.position = 'absolute';
             menu.style.top = `${rect.top}px`;
-            menu.style.left = `${rect.right + 4}px`; // 화면 오른쪽 4px 여백
+            menu.style.left = `${rect.right + 4}px`;
             menu.style.zIndex = '9999';
 
             document.body.appendChild(menu);
+
+            // ✅ 현재 클릭된 버튼에만 persistent
+            btn.classList.add('persistent');
+
+            const outsideClickHandler = (event) => {
+                const clickedInside = menu.contains(event.target) || btn.contains(event.target);
+                if (!clickedInside) {
+                    menu.remove();
+                    btn.classList.remove('persistent');
+                    document.removeEventListener('click', outsideClickHandler);
+                }
+            };
+
+            setTimeout(() => {
+                document.addEventListener('click', outsideClickHandler);
+            }, 0);
         });
+
         li.appendChild(btn);
 
         // 클릭하면 탭 생성/전환
@@ -381,24 +401,40 @@ function createContextMenu(sessionId, title) {
     menu.className = 'context-menu';
 
     const rename = document.createElement('button');
-    rename.textContent = '이름 바꾸기';
+    rename.className = 'rename-btn';
+    rename.setAttribute('data-translate-key', 'renameChat');
+    rename.textContent = getTranslation('renameChat');
     rename.addEventListener('click', e => {
         e.stopPropagation();
-        handleRenameInline(sessionId);  // 여기로 연결
+        handleRenameInline(sessionId);
         closeAllContextMenus();
     });
 
     const del = document.createElement('button');
     del.className = 'delete-btn';
-    del.textContent = '삭제';
+    del.setAttribute('data-translate-key', 'deleteChat');
+    del.textContent = getTranslation('deleteChat');
     del.addEventListener('click', e => {
         e.stopPropagation();
-        window._currentDeleteSessionId = sessionId; // sessionId를 전역 변수에 저장
-        openDeleteModal(sessionId); // 삭제 모달 호출
+        window._currentDeleteSessionId = sessionId;
+        openDeleteModal(sessionId);
         closeAllContextMenus();
     });
 
     menu.append(rename, del);
+
+    // ✅ 메뉴 외부 클릭 시 닫기 기능 추가
+    setTimeout(() => {
+        const outsideClickHandler = (event) => {
+            const isInsideMenu = menu.contains(event.target);
+            if (!isInsideMenu) {
+                menu.remove();
+                document.removeEventListener('click', outsideClickHandler);
+            }
+        };
+        document.addEventListener('click', outsideClickHandler);
+    }, 0);
+
     return menu;
 }
 
