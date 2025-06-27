@@ -10,6 +10,7 @@ from . import prompt_manager
 import re
 
 from qdrant_client import QdrantClient, models
+import json
 
 print("--- rag/services.py: Module imported ---")
 
@@ -69,35 +70,50 @@ def _translate_text(text: str, target_lang_name: str) -> str:
 
 def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_history=[]):
     try:
-        print(f"\n[RAG 시작] 질문: '{question}'")
+        print(f"\n[RAG 시작] 원본 질문: '{question}'")
+
+        # --- 1. 검색 전략 수립 ---
+        
+        # [1-1. 검색어 확장 및 재구성]
+        # AI를 사용하여 사용자의 구어체 질문을 검색에 더 유리한 키워드와 문장으로 변환합니다.
+        query_expansion_prompt = f"""
+사용자의 다음 질문을 분석하여, 이 질문과 관련된 내용을 법률 문서에서 찾기 위한 최적의 검색어들을 추출해줘.
+- 핵심 키워드 (1~3개)
+- 의미적으로 유사한 동의어 또는 법률 용어
+- 검색을 위한 완전한 문장 형태의 질문
+- semantic_query는 사용자의 질문이 최우선이야
+
+사용자 질문: "{question}"
+
+출력 형식은 다음과 같이 JSON으로만 답변해줘:
+{{
+  "keywords": ["키워드1", "키워드2",],
+  "semantic_query": "검색용 문장"
+}}
+"""
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "You are a query analysis expert."},
+                          {"role": "user", "content": query_expansion_prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.1
+            )
+            query_data = json.loads(response.choices[0].message.content)
+            keywords = query_data.get("keywords", [])
+            semantic_query = query_data.get("semantic_query", question)
+            print(f"  - AI 기반 검색어 확장: Keywords={keywords}, Semantic Query='{semantic_query}'")
+        except Exception as e:
+            print(f"  - 경고: 검색어 확장 실패. 원본 질문을 사용합니다. 오류: {e}")
+            keywords = question.split()
+            semantic_query = question
+
 
         final_context_chunks = []
-
-        # --- 1. 질문 유형 분석 및 검색 전략 결정 ---
-        article_match = re.search(r'(\d+)\s*조', question)
-        
-        # [전략 1: 조항 직접 검색]
-        if article_match:
-            article_number = article_match.group(1)
-            keyword_pattern = rf'제\s*{article_number}\s*조'
-            print(f"  - [전략 1: 조항 직접 검색] 패턴 '{keyword_pattern}'으로 검색합니다.")
-
-            # 검색 대상 청크 리스트 준비
-            all_chunks = []
-            if isinstance(user, AnonymousUser):
-                if not faiss_data or 'chunks' not in faiss_data:
-                    return {"success": False, "error": "분석된 문서 정보가 없습니다."}
-                all_chunks = faiss_data['chunks']
-            else:
-                # ★★★ 회원용 청크 로딩 구현 ★★★
-                all_chunks = doc_retriever.get_all_chunks_from_qdrant(qdrant_client, user.id, session_id)
-
-            # 전체 청크를 순회하며 키워드 검색
-            for chunk in all_chunks:
-                if re.search(keyword_pattern, chunk.split('\n')[0]):
-                    final_context_chunks.append(chunk)
+        retrieved_chunks=[]
 
         # [전략 2: 의미 기반 검색 (조항 검색 실패 또는 일반 질문 시)]
+          #[2-1. 의미 기반 검색 (기본)]
         if not final_context_chunks:
             print("  - [전략 2: 의미 기반 검색]을 수행합니다.")
             search_query = question # 다국어 로직은 나중에 추가
@@ -124,14 +140,38 @@ def get_answer(user, session_id, question, language='ko', faiss_data=None, chat_
                     top_k=top_k
                 )
 
-        # --- 2. 최종 답변 생성 ---
+            '''
+             # [2-2. 키워드 기반 재점수(Re-ranking)]
+            
+            print(f"  - [2단계: 키워드 재점수]를 수행합니다. (가져온 청크: {len(retrieved_chunks)}개)")
+
+            if retrieved_chunks: # ★ 1차 검색 결과가 있을 때만 재점수 실행
+                chunk_scores = []
+                for chunk in retrieved_chunks:
+                    score = 0
+                    article_match = re.search(r'(\d+)\s*조', question)
+                    if article_match and f"제{article_match.group(1)}조" in chunk.split('\n')[0]:
+                        score += 100
+                    
+                    for kw in keywords:
+                        if kw.lower() in chunk.lower():
+                            score += 10
+                    
+                    chunk_scores.append({'chunk': chunk, 'score': score})
+                    
+                reranked_chunks = sorted(chunk_scores, key=lambda x: x['score'], reverse=True)
+                
+                # 점수가 0보다 큰, 즉 관련성이 있는 청크만 최종 후보로 선택
+                final_context_chunks = [item['chunk'] for item in reranked_chunks if item['score'] > 0][:5]
+                '''
+        # ---  최종 답변 생성 ---
         if not final_context_chunks:
             return {"success": True, "answer": "죄송합니다. 문서에서 관련 내용을 찾을 수 없습니다."}
 
         context = "\n\n---\n\n".join(final_context_chunks)
 
         # --- 3. 프롬프트 답변 생성  ---
-        korean_prompt = prompt_manager.get_answer_prompt(context, question)
+        korean_prompt = prompt_manager.get_answer_prompt(context, question, keywords)
 
         messages = [{"role": "system", "content": "You are a helpful legal AI assistant."}]
         for entry in chat_history:

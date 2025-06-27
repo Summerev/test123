@@ -310,6 +310,7 @@ def search_qdrant(client: QdrantClient, embedding_client, query: str, user_id: i
         results = [hit.payload['text'] for hit in hits]
         print(f"✅ 검색 완료: {len(results)}개 결과 반환")
         print(f"🏁 search_qdrant 함수 종료: {len(results)}개 문서 검색 완료")
+        print(results)
         return results
     except Exception as e:
         print(f"❌ search_qdrant 함수 오류 발생: {e}")
