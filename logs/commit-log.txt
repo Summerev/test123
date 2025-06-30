@@ -223,3 +223,9 @@ Author: byeol286
 Message: rag 질문의도 구분 및 프롬프트 추가, 보완
 Commit: a30b9492a0a9e6c60f3019aa473e55a6a22be029
 
+==== New Push ====
+Time: 2025-06-30 05:34:36
+Author: 여름정원
+Message: Resolve conflict in README.md and complete merge
+Commit: e63e8982472fc8b6b7422e2c2069896b2f0c02e5
+
