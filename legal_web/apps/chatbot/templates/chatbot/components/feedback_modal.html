@@ -1,0 +1,52 @@
+<div class="modal-overlay" id="feedbackModal">
+    <div class="modal">
+        <!-- modal-close 버튼의 onclick 속성 제거 -->
+        <button class="modal-close">
+            &times;
+        </button>
+        <div class="modal-header">
+            <h3 data-translate-key="feedbackModalTitle">피드백 제공</h3>
+            <p data-translate-key="feedbackModalSubtitle">
+                해석에 대한 의견을 알려주세요.
+            </p>
+        </div>
+        <!-- form 태그의 onsubmit 속성 제거. id="feedbackForm"은 그대로 유지 -->
+        <form id="feedbackForm">
+            <input type="hidden" id="feedbackMessageId" value="" />
+            <div class="form-group">
+                <label class="form-label" data-translate-key="feedbackReasonLabel">오류 사유</label>
+                <select id="feedbackReason" class="form-input" name="reason">
+                    <option value="inaccurate" data-translate-key="reasonInaccurate">
+                        오역/부정확
+                    </option>
+                    <option value="out_of_context" data-translate-key="reasonOutOfContext">
+                        문맥 불일치
+                    </option>
+                    <option value="unnatural" data-translate-key="reasonUnnatural">
+                        부자연스러운 표현
+                    </option>
+                    <option value="other" data-translate-key="reasonOther">기타</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-translate-key="feedbackCommentLabel">
+                    추가 의견 (선택)
+                </label>
+                <textarea
+                    id="feedbackComment"
+                    class="form-input"
+                    rows="3"
+                    data-translate-key-placeholder="feedbackCommentPlaceholder"
+                    name="comment"
+                ></textarea>
+            </div>
+            <button
+                type="submit"
+                class="form-submit"
+                data-translate-key="submitFeedbackButton"
+            >
+                피드백 제출
+            </button>
+        </form>
+    </div>
+</div>

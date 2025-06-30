@@ -1,0 +1,486 @@
+// static/js/ui/chatUI.js (수정된 내용)
+
+import { $, $$, on, addClass, removeClass, escapeRegExp } from '../utils/domHelpers.js';
+import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
+import {
+    formatTimestamp,
+    saveChatSessionInfo,
+    clearAllChats,
+    loadChatHistoryFromStorage,
+    getChatHistory,
+} from '../data/chatHistoryManager.js';
+
+import { generateSessionId } from '../main.js';
+import { createTab, renderTabBar, switchTab, updateTabTitle } from './chatTabUI.js'
+import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
+import { openTabs, chatSessions, setActiveTab } from '../state/chatTabState.js';
+import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
+
+let attachments = [];
+const chatInput = $('#chatInput');
+const sendButton = $('#sendButton');
+const chatMessagesContainer = $('#chatMessages');
+const welcomeMessage = $('#welcomeMessage');
+let messageIdCounter = parseInt(localStorage.getItem('legalBotMessageIdCounter')) || 0;
+
+/**
+ * Initializes the auto-resizing behavior for the chat input field
+ * and updates the send button's disabled state.
+ */
+export function initChatInputAutoResize() {
+    if (!chatInput || !sendButton) return;
+
+    on(chatInput, 'input', function () {
+        this.style.height = 'auto'; // Reset height
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px'; // Set new height, max 120px
+        sendButton.disabled = this.value.trim() === ''; // Disable if empty
+    });
+
+    chatInput.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Initializes click handlers for example prompt cards to populate the chat input.
+ */
+export function initExamplePrompts() {
+    $$('.example-prompt').forEach((promptCard) => {
+        on(promptCard, 'click', function () {
+            // Get prompt text from data-prompt-text or element's text content
+            const promptText = this.dataset.promptText || this.textContent.trim().replace(/^"|"$/g, '');
+            if (chatInput) {
+                chatInput.value = promptText;
+                chatInput.focus();
+                // Manually dispatch input event to update height and button state
+                chatInput.dispatchEvent(new Event('input'));
+            }
+        });
+    });
+}
+
+export function initChatUI() {
+    // 이 함수가 DOMContentLoaded 시점에 호출되면
+    // chatInput과 sendButton이 이미 HTML에 존재하고
+    // 상단에서 $() 셀렉터로 변수에 할당된 상태일 것입니다.
+    activateChatInput(false); // 초기에는 채팅 입력 비활성화
+    // 필요한 다른 채팅 UI 관련 초기화 로직도 여기에 추가
+    initChatInputAutoResize(); // 입력창 자동 높이 조절 초기화
+    // initSendMessageEvents(); // 메시지 전송 이벤트는 파일 업로드 후 활성화될 때 붙이는 것이 논리적입니다.
+                               // 이 부분은 나중에 '활성화' 시점에 붙이도록 변경하는 것을 고려해보세요.
+                               // 지금은 activateChatInput(true) 될 때 전송 버튼이 활성화되므로
+                               // 전송 버튼의 click 이벤트는 chatUI.js에 계속 유지되어도 괜찮습니다.
+}
+
+export function generateMessageId() {
+	messageIdCounter++;
+	localStorage.setItem('legalBotMessageIdCounter', messageIdCounter);
+	return `msg-${Date.now()}-${messageIdCounter}`;
+}
+
+export function addMessageToUI(messageText, sender, messageId, timestamp, isHistory = false, isTemporary = false) {
+    if (!chatMessagesContainer) {
+        console.warn('Chat messages container not found.');
+        return null;
+    }
+
+    // 기존에 같은 ID의 메시지가 있는지 확인
+    if (messageId) {
+        const existingMessage = chatMessagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+        if (existingMessage) {
+            console.log('기존 메시지 업데이트:', messageId);
+            // 기존 메시지의 내용만 업데이트
+            const messageTextElement = existingMessage.querySelector('.message-content') || 
+                                     existingMessage.querySelector('.message-text');
+            if (messageTextElement) {
+                messageTextElement.innerHTML = messageText.replace(/\n/g, '<br>');
+            }
+            return existingMessage;
+        }
+    }
+
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('chat-message');
+    
+    if (messageId) {
+        messageElement.dataset.messageId = messageId;
+    }
+    if (isTemporary) {
+        messageElement.classList.add('temporary-message');
+    }
+
+    const messageBubble = document.createElement('div');
+    messageBubble.classList.add('message-bubble');
+
+    if (sender === 'user') {
+        messageElement.classList.add('user-message');
+        
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-text');
+        messageContent.textContent = messageText;
+        messageBubble.appendChild(messageContent);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
+        
+    } else if (sender === 'bot') {
+        messageElement.classList.add('bot-message');
+
+        const botNameSpan = document.createElement('span');
+        botNameSpan.classList.add('bot-name');
+        botNameSpan.textContent = getTranslation('botName');
+        messageBubble.appendChild(botNameSpan);
+
+        const messageContentSpan = document.createElement('div');
+        messageContentSpan.classList.add('message-content');
+
+        // 법률 용어 하이라이팅 로직 (기존 코드 유지)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = messageText.replace(/\n/g, '<br>');
+
+        function highlightTerms(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                let content = node.nodeValue;
+                let newHTML = '';
+                let lastIndex = 0;
+                const termSetForCurrentLang = getLegalTerms()[getCurrentLanguage()] || {};
+                const termSetKo = getLegalTerms().ko || {};
+
+                let allTermsRegexParts = [];
+                // Add terms from Korean dictionary
+                for (const termKey in termSetKo) {
+                    allTermsRegexParts.push(escapeRegExp(termKey));
+                }
+                // Add terms from current language dictionary if not already in Korean
+                if (getCurrentLanguage() !== 'ko') {
+                    for (const termKey in termSetForCurrentLang) {
+                        if (!termSetKo.hasOwnProperty(termKey)) {
+                            allTermsRegexParts.push(escapeRegExp(termKey));
+                        }
+                    }
+                }
+
+                if (allTermsRegexParts.length > 0) {
+                    const combinedRegex = new RegExp(`\\b(${allTermsRegexParts.join('|')})\\b`, 'gi');
+                    let match;
+                    while ((match = combinedRegex.exec(content)) !== null) {
+                        newHTML += content.substring(lastIndex, match.index);
+                        const matchedTermOriginal = match[0];
+                        const matchedTermKey = matchedTermOriginal.toLowerCase();
+                        let termData = termSetForCurrentLang[matchedTermKey] || termSetKo[matchedTermKey];
+
+                        // Try to find term by its translation in other languages
+                        if (!termData) {
+                            const koKey = Object.keys(termSetKo).find(
+                                (k) =>
+                                    (termSetKo[k].term && termSetKo[k].term.toLowerCase() === matchedTermKey) ||
+                                    (termSetKo[k].en_term && termSetKo[k].en_term.toLowerCase() === matchedTermKey) ||
+                                    (termSetKo[k].ja_term && termSetKo[k].ja_term.toLowerCase() === matchedTermKey) ||
+                                    (termSetKo[k].zh_term && termSetKo[k].zh_term.toLowerCase() === matchedTermKey) ||
+                                    (termSetKo[k].es_term && termSetKo[k].es_term.toLowerCase() === matchedTermKey)
+                            );
+                            if (koKey) termData = termSetKo[koKey];
+                        }
+
+                        if (termData) {
+                            let displayTerm = matchedTermOriginal;
+                            let displayExplanation = termData.explanation;
+
+                            const currentLangCode = getCurrentLanguage();
+                            if (currentLangCode === 'en' && termData.en_term) {
+                                displayTerm = termData.en_term;
+                                const enSpecific = getLegalTerms().en[termData.en_term.toLowerCase()];
+                                if (enSpecific) displayExplanation = enSpecific.explanation;
+                            } else if (currentLangCode === 'ja' && termData.ja_term) {
+                                displayTerm = termData.ja_term;
+                                const jaSpecific = getLegalTerms().ja[termData.ja_term.toLowerCase()];
+                                if (jaSpecific) displayExplanation = jaSpecific.explanation;
+                            } else if (currentLangCode === 'zh' && termData.zh_term) {
+                                displayTerm = termData.zh_term;
+                                const zhSpecific = getLegalTerms().zh[termData.zh_term.toLowerCase()];
+                                if (zhSpecific) displayExplanation = zhSpecific.explanation;
+                            } else if (currentLangCode === 'es' && termData.es_term) {
+                                displayTerm = termData.es_term;
+                                const esSpecific = getLegalTerms().es[termData.es_term.toLowerCase()];
+                                if (esSpecific) displayExplanation = esSpecific.explanation;
+                            } else if (currentLangCode === 'ko') {
+                                displayTerm = termData.term;
+                                displayExplanation = termData.explanation;
+                            }
+
+                            newHTML += `<span class="legal-term" title="${displayExplanation}">${displayTerm}</span><span class="term-explanation">(${displayExplanation})</span>`;
+                        } else {
+                            newHTML += matchedTermOriginal;
+                        }
+                        lastIndex = combinedRegex.lastIndex;
+                    }
+                    newHTML += content.substring(lastIndex);
+                    const spanWrapper = document.createElement('span');
+                    spanWrapper.innerHTML = newHTML;
+                    node.parentNode.replaceChild(spanWrapper, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                Array.from(node.childNodes).forEach(highlightTerms);
+            }
+        }
+        
+        Array.from(tempDiv.childNodes).forEach(highlightTerms);
+        messageContentSpan.innerHTML = tempDiv.innerHTML;
+        messageBubble.appendChild(messageContentSpan);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
+
+        // 피드백 버튼 추가 (파일 업로드 메시지가 아닌 경우에만)
+        if (!messageText.includes('업로드') && !messageText.includes('파일')) {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.classList.add('feedback-buttons');
+            feedbackDiv.innerHTML = `
+                <span data-translate-key="feedbackQuestion">${getTranslation('feedbackQuestion')}</span>
+                <button class="feedback-yes" data-feedback="yes" data-message-id="${messageId}">${getTranslation('feedbackYes')}</button>
+                <button class="feedback-no" data-feedback="no" data-message-id="${messageId}">${getTranslation('feedbackNo')}</button>
+            `;
+            messageBubble.appendChild(feedbackDiv);
+        }
+        
+    } else if (sender === 'system') {
+        messageElement.classList.add('system-message');
+        
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-text');
+        messageContent.textContent = messageText;
+        messageBubble.appendChild(messageContent);
+        
+        if (timestamp) {
+            const timestampSpan = document.createElement('div');
+            timestampSpan.classList.add('message-time');
+            timestampSpan.textContent = formatTimestamp(timestamp);
+            messageBubble.appendChild(timestampSpan);
+        }
+    }
+
+    messageElement.appendChild(messageBubble);
+    
+    // 메시지 컨테이너에 추가하기 전에 웰컴 메시지가 숨겨져 있는지 확인
+    if (welcomeMessage && !welcomeMessage.classList.contains('hidden')) {
+        welcomeMessage.classList.add('hidden');
+    }
+    
+    chatMessagesContainer.appendChild(messageElement);
+
+    // 스크롤을 맨 아래로 이동 (히스토리 로딩이 아닌 경우에만)
+    if (!isHistory) {
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+    
+    console.log('메시지 UI 추가 완료:', messageId, sender, messageText.substring(0, 50) + '...');
+    return messageElement;
+}
+
+
+/**
+ * 채팅 입력 필드와 전송 버튼을 활성화하거나 비활성화합니다.
+ * @param {boolean} enable - true면 활성화, false면 비활성화.
+ */
+export function activateChatInput(enable) {
+    if (chatInput && sendButton) {
+        chatInput.disabled = !enable;
+        sendButton.disabled = !enable || chatInput.value.trim() === '';
+        if (enable) {
+            chatInput.focus();
+        }
+    } else {
+        console.warn('activateChatInput: chatInput or sendButton not found.');
+    }
+}
+
+
+/**
+ * Scrolls the chat messages container to the bottom.
+ */
+export function scrollToBottom() {
+    if (chatMessagesContainer) {
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+}
+
+/**
+ * Toggles the visibility of the welcome message.
+ */
+export function toggleWelcomeMessage(hide) {
+    if (welcomeMessage) {
+        if (hide) {
+            addClass(welcomeMessage, 'hidden');
+        } else {
+            removeClass(welcomeMessage, 'hidden');
+        }
+    }
+}
+
+
+
+/**
+ * 최근 대화 목록 렌더링
+ */
+export function renderRecentChats(chatList) {
+    const ul = document.getElementById('recentChatsList');
+    if (!ul) return;
+    ul.innerHTML = '';
+
+    chatList.forEach(chat => {
+        const li = document.createElement('li');
+        li.className = 'chat-item';
+        li.dataset.chatId = chat.id;
+        li.textContent = chat.title;
+
+        // 점3개 버튼
+        const btn = document.createElement('button');
+        btn.className = 'menu-btn';
+        btn.textContent = '⋯';
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            closeAllContextMenus();
+
+            // 1) 메뉴 생성
+            const menu = createContextMenu(chat.id, chat.title);
+
+            // 2) li 위치 정보 가져오기
+            const rect = li.getBoundingClientRect();
+
+            // 3) 메뉴를 body에 붙이고, 절대좌표 찍기
+            menu.style.position = 'absolute';
+            menu.style.top = `${rect.top}px`;
+            menu.style.left = `${rect.right + 4}px`; // 화면 오른쪽 4px 여백
+            menu.style.zIndex = '9999';
+
+            document.body.appendChild(menu);
+        });
+        li.appendChild(btn);
+
+        // 클릭하면 탭 생성/전환
+        li.addEventListener('click', () => {
+            if (!openTabs[chat.id]) {
+                createTab(chat.id, chat.title);
+            }
+            switchTab(chat.id);
+        });
+
+        ul.appendChild(li);
+    });
+}
+
+function closeAllContextMenus() {
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+}
+
+function createContextMenu(id, title) {
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+
+    const rename = document.createElement('button');
+    rename.textContent = '이름 바꾸기';
+    rename.addEventListener('click', e => {
+        e.stopPropagation();
+        handleRename(id, title);
+        closeAllContextMenus();
+    });
+
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '삭제';
+    del.addEventListener('click', e => {
+
+        e.stopPropagation();
+        handleDelete(id);
+        closeAllContextMenus();
+    });
+
+    menu.append(rename, del);
+    return menu;
+}
+
+// 세션 추가
+export function createNewSession() {
+    const sessionId = generateSessionId();
+    chatSessions[sessionId] = []; // 새 세션의 빈 메시지 배열 초기화
+
+    if (!openTabs[sessionId]) {
+        openTabs[sessionId] = { title: '새 대화' };
+    }
+
+    renderTabBar();
+    switchTab(sessionId);
+    saveChatSessionInfo(sessionId, '새 대화');
+    renderRecentChats(getChatSessionList());
+
+    // 새 채팅방 생성 시 입력창 완전 초기화 및 비활성화
+    const chatInput = $('#chatInput');
+    if (chatInput) {
+        chatInput.value = '';
+        chatInput.placeholder = '파일을 업로드하기 전에 질문을 입력할 수 없습니다.'; // 메시지 변경
+        chatInput.disabled = true; // <--- 이 부분을 true로 설정하여 비활성화
+        chatInput.style.height = 'auto'; // 높이도 초기화
+    }
+
+    // 전송 버튼 초기화 (비활성화)
+    const sendButton = $('#sendButton');
+    if (sendButton) {
+        sendButton.disabled = true; // 처음에는 비활성화 (현재 코드와 동일)
+    }
+
+    // 웰컴 메시지 강제 초기화
+    const welcomeMessage = $('#welcomeMessage');
+    const chatMessages = $('#chatMessages');
+    if (welcomeMessage && chatMessages) {
+        chatMessages.innerHTML = '';
+        welcomeMessage.classList.remove('hidden');
+        chatMessages.appendChild(welcomeMessage);
+        
+        // 파일 업로드 폼 강제 리셋
+        if (forceResetWelcomeMessage) {
+            forceResetWelcomeMessage();
+        }
+    }
+
+    console.log(`새 채팅방 생성 및 완전 초기화: ${sessionId}`);
+    return sessionId;
+}
+
+function handleRename(id, oldTitle) {
+    const newTitle = prompt('새 이름 입력', oldTitle);
+    if (newTitle) {
+        // 1) 타이틀 저장소에 반영
+        saveChatSessionInfo(id, { titleText: newTitle });
+        // 2) 사이드바 목록 갱신
+        renderRecentChats(getChatSessionList());
+        // 3) 탭 UI 타이틀 동기화
+        updateTabTitle(id, newTitle);
+    }
+}
+
+
+function handleDelete(id) {
+    if (confirm('정말 삭제하시겠습니까?')) {
+        // 1) 저장소에서 삭제
+        deleteChatSession(id);
+
+        // 2) 사이드바 갱신 (deleteChatSession 내부에서 이미 수행됨)
+        // renderRecentChats(getChatSessionList());
+
+        // 3) 탭도 닫아주기 (deleteChatSession 내부에서 이미 처리됨)
+        // const remainingTabIds = Object.keys(openTabs);
+        // const fallbackId = remainingTabIds.length > 0 ? remainingTabIds[0] : null;
+        // switchTab(fallbackId);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderRecentChats(getChatHistory());
+    document.addEventListener('click', closeAllContextMenus);
+});

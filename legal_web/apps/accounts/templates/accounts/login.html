@@ -1,0 +1,47 @@
+<!-- login.html (모달 전용) -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <button class="modal-close">
+      &times;
+    </button>
+    <div class="modal-header">
+      <h3 data-translate-key="loginModalTitle">로그인</h3>
+      <p data-translate-key="loginModalWelcome">LegalBot에 오신 것을 환영합니다</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="social-login">
+        <button type="button" class="social-btn" data-translate-key="googleLogin">Google</button>
+        <button type="button" class="social-btn" data-translate-key="kakaoLogin">Kakao</button>
+      </div>
+
+      <div class="divider">
+        <span data-translate-key="orDivider">또는</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="emailLabel">이메일</label>
+        <input type="email" class="form-input" required placeholder="example@email.com"
+               data-translate-key-placeholder="emailPlaceholder" name="email" /> </div>
+
+      <div class="form-group">
+        <label class="form-label" data-translate-key="passwordLabel">비밀번호</label>
+        <input type="password" class="form-input" required placeholder="비밀번호를 입력하세요"
+               data-translate-key-placeholder="passwordPlaceholderLogin" name="password" /> </div>
+
+      {# remember_me 체크박스 필드 추가 시작 #}
+      <div class="form-group form-check"> {# 부트스트랩 클래스를 활용하여 체크박스 스타일링 #}
+        <input type="checkbox" class="form-check-input" id="rememberMe" name="remember_me">
+        <label class="form-check-label" for="rememberMe" data-translate-key="rememberMeLabel">로그인 유지</label>
+      </div>
+      {# remember_me 체크박스 필드 추가 끝 #}
+
+      <button type="submit" class="form-submit" data-translate-key="loginButton">로그인</button>
+    </form>
+
+    <div class="modal-footer">
+      <span data-translate-key="noAccount">계정이 없으신가요?</span>
+      <a href="#" id="noAccountLink" data-translate-key="signupLink">회원가입</a>
+    </div>
+  </div>
+</div>

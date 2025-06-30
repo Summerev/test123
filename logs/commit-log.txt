@@ -1,0 +1,225 @@
+==== New Push ====
+Author: grozovoi10
+Message: Update .gitignore
+Commit: f9acc8850d1e29b60ded94bd293829d95288277a
+
+==== New Push ====
+Author: grozovoi10
+Message: 초기 작업
+Commit: f1b50882fc3fddcfde5a2caeabb7cb8f16a4f2e3
+
+==== New Push ====
+Author: grozovoi10
+Message: Update README.md
+Commit: 4e0f00bf3a44427b9872d28bc0ec24813ed78c56
+
+==== New Push ====
+Time: 2025-05-21 08:54:07
+Author: grozovoi10
+Message: Update commit-log.yml
+Commit: b3b6c74eda905c7c4e147af98419b80d60816e7c
+
+==== New Push ====
+Time: 2025-06-04 02:03:24
+Author: grozovoi10
+Message: 구조변경 적용
+Commit: 4ad6a273d885f41685bfbd2672315f050010bd5b
+
+==== New Push ====
+Time: 2025-06-04 06:35:53
+Author: grozovoi10
+Message: Merge pull request #1 from PROJECTLAW5/htmldivision
+Commit: 8ffaac1390239ce77845dffe7b53afac60d31061
+
+==== New Push ====
+Time: 2025-06-04 08:47:23
+Author: grozovoi10
+Message: Merge pull request #2 from PROJECTLAW5/jsdiv
+Commit: 351edfdfb3ba0cf2b83af08cb99c8bd3a4b93139
+
+==== New Push ====
+Time: 2025-06-05 03:53:51
+Author: grozovoi10
+Message: Merge pull request #3 from PROJECTLAW5/settings
+Commit: ddd526b3355f2f08d3255c0904970a32796aa650
+
+==== New Push ====
+Time: 2025-06-05 04:00:08
+Author: grozovoi10
+Message: Update requirements.txt
+Commit: d2409a6dedadb8ffd1142aa3c313af210e35801b
+
+==== New Push ====
+Time: 2025-06-09 02:02:53
+Author: grozovoi10
+Message: Merge pull request #4 from PROJECTLAW5/db
+Commit: 5320b1ab8e1ed4c80628d782b492a6dded10a2ee
+
+==== New Push ====
+Time: 2025-06-09 07:14:06
+Author: grozovoi10
+Message: 로그아웃
+Commit: aaaa2c52e3da62c09a06f22aaedfd5c00f759019
+
+==== New Push ====
+Time: 2025-06-10 02:42:40
+Author: grozovoi10
+Message: Merge pull request #5 from PROJECTLAW5/session
+Commit: 8526bf291bde5cbad55b55e2d0353dcfc7ebf6cc
+
+==== New Push ====
+Time: 2025-06-10 02:47:15
+Author: grozovoi10
+Message: Update requirements.txt
+Commit: e048d83accfbc22ebe353aefdac08d5d57b10667
+
+==== New Push ====
+Time: 2025-06-12 09:00:00
+Author: Summerev
+Message: Update README.md
+Commit: 3c028b494eae0ca9df46c744779affcfb71400a2
+
+==== New Push ====
+Time: 2025-06-12 09:00:33
+Author: Summerev
+Message: Update README.md
+Commit: a8966ae28fa94116164602dfcceca5a7c2215ab8
+
+==== New Push ====
+Time: 2025-06-16 00:50:50
+Author: grozovoi10
+Message: Merge pull request #7 from PROJECTLAW5/main-copy-202506131029
+Commit: 78b586a1676150e1943574fa96378eb97c40bac9
+
+==== New Push ====
+Time: 2025-06-16 01:11:12
+Author: grozovoi10
+Message: 피드백 모달, 채팅방 삭제기능 수정
+Commit: 7f75b46fec0ae6f0171584c1a11b8b5c52cfd30e
+
+==== New Push ====
+Time: 2025-06-16 01:35:02
+Author: grozovoi10
+Message: Merge pull request #8 from PROJECTLAW5/0616/neperis/ui
+Commit: f7aa82d4bdeb5f2b9bccb497761042f76673a52c
+
+==== New Push ====
+Time: 2025-06-16 01:39:35
+Author: grozovoi10
+Message: 불필요 파일 제거
+Commit: c5bece4254817a8a6e0305750e7ec8b202097852
+
+==== New Push ====
+Time: 2025-06-16 03:24:03
+Author: grozovoi10
+Message: Merge pull request #9 from PROJECTLAW5/0616/neperis/chat-tab
+Commit: cfaecad48aff9d6290fba6af2d85e5f6470b0321
+
+==== New Push ====
+Time: 2025-06-16 06:41:46
+Author: grozovoi10
+Message: Merge pull request #10 from PROJECTLAW5/0616/neperis/chat-tab
+Commit: 263bccae51f953b9ea35bbf2baf67df0b3dd5647
+
+==== New Push ====
+Time: 2025-06-16 07:04:46
+Author: grozovoi10
+Message: Merge pull request #11 from PROJECTLAW5/0616/neperis/chat-tab
+Commit: 11376f96e9f8ad8c3ed9c2095594c5ea2e9fe0d1
+
+==== New Push ====
+Time: 2025-06-17 07:14:44
+Author: grozovoi10
+Message: Merge pull request #12 from PROJECTLAW5/06160508/neperis/file
+Commit: 8c37c34f10a395808eba582927f0a556481bd03a
+
+==== New Push ====
+Time: 2025-06-17 07:43:55
+Author: grozovoi10
+Message: Merge pull request #13 from PROJECTLAW5/06160508/file/copy-06170401
+Commit: b02dd4504cefb2313c9f79a5590c473454df72ba
+
+==== New Push ====
+Time: 2025-06-18 06:27:12
+Author: grozovoi10
+Message: Merge pull request #14 from PROJECTLAW5/06160508/file/copy-06170401
+Commit: 70a30a34c549a672ddbeff4f43c5f61c00501665
+
+==== New Push ====
+Time: 2025-06-19 01:04:13
+Author: grozovoi10
+Message: Merge pull request #15 from PROJECTLAW5/06181552_copy
+Commit: f91eff4110f611645b3b9b39e000bc1273671278
+
+==== New Push ====
+Time: 2025-06-19 02:32:48
+Author: grozovoi10
+Message: Merge pull request #16 from PROJECTLAW5/06181552_copy
+Commit: 0b5060e99bb0f9a6b536833320689f192fe65021
+
+==== New Push ====
+Time: 2025-06-19 03:53:02
+Author: grozovoi10
+Message: Merge pull request #17 from PROJECTLAW5/06191144_copy_openai
+Commit: 78e766b436e5bf8f715bd1ad3793fa675ffb3af5
+
+==== New Push ====
+Time: 2025-06-19 04:19:37
+Author: grozovoi10
+Message: Merge pull request #18 from PROJECTLAW5/06191144_copy_openai
+Commit: 83ae905954587cd9595ff5f7ceb3b9542fed370a
+
+==== New Push ====
+Time: 2025-06-24 01:07:04
+Author: grozovoi10
+Message: 이름변경 오류수정
+Commit: dea3d1bfb691427122efb1839b8ea5da7a472b95
+
+==== New Push ====
+Time: 2025-06-24 06:17:31
+Author: grozovoi10
+Message: Merge pull request #19 from PROJECTLAW5/module_division
+Commit: b85d51749e34a5749a1bebff470302806a1b84d3
+
+==== New Push ====
+Time: 2025-06-24 06:32:36
+Author: grozovoi10
+Message: 함수명 변경
+Commit: 1cc4c9059202dd09e75df0eb69407c8833373afc
+
+==== New Push ====
+Time: 2025-06-24 06:45:59
+Author: grozovoi10
+Message: Merge branch 'main' of https://github.com/PROJECTLAW5/teamproject
+Commit: 975ba5cd2c2c811d221008a3394c7efcc08ad6a7
+
+==== New Push ====
+Time: 2025-06-25 02:47:56
+Author: grozovoi10
+Message: Merge pull request #20 from PROJECTLAW5/add_contranct_copy
+Commit: ddecc41732549de32a9df2b2848d4004dcbef958
+
+==== New Push ====
+Time: 2025-06-25 05:23:54
+Author: byeol286
+Message: main 업데이트2
+Commit: 0ac5e30da31939a39d5d2856e8740597bc5e9e59
+
+==== New Push ====
+Time: 2025-06-26 03:56:05
+Author: grozovoi10
+Message: Merge pull request #22 from PROJECTLAW5/risk_copy_0626
+Commit: a04679436b1141bcd1d9d8c2b921e6ecd3fca3b8
+
+==== New Push ====
+Time: 2025-06-26 05:22:57
+Author: grozovoi10
+Message: Pylint 오류 수정
+Commit: dbffa55dcc460d77a557f1df13b30deed79f6cff
+
+==== New Push ====
+Time: 2025-06-30 01:55:45
+Author: byeol286
+Message: rag 질문의도 구분 및 프롬프트 추가, 보완
+Commit: a30b9492a0a9e6c60f3019aa473e55a6a22be029
+

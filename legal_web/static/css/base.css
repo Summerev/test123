@@ -1,0 +1,78 @@
+/* static/css/base.css */
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Root Variables (Light Mode) */
+:root {
+  --bg-color: #fafafa;
+  --text-color: #2d3748;
+  --header-bg: white;
+  --border-color: #e2e8f0;
+  --sidebar-bg: white;
+  --chat-container-bg: white;
+  --message-user-bg: #4299e1;
+  --message-user-text: white;
+  --message-bot-bg: #f0f2f5;
+  --message-bot-text: #2d3748;
+  --button-bg: #f8fafc;
+  --button-text: #4a5568;
+  --button-hover-bg: #f0f2f5;
+  --button-hover-text: #2d3748;
+  --modal-bg: white;
+  --input-bg: white;
+  --input-focus-border: #4299e1;
+  --link-color: #4299e1;
+  --icon-color: #4a5568;
+  --primary-accent: #4299e1;
+  --primary-accent-darker: #2b6cb0;
+  --primary-accent-text: white;
+  --timestamp-color: #718096;
+  --collapsible-content-max-height: 200px;
+}
+
+/* Dark Mode Variables */
+body.dark-mode {
+  --bg-color: #1a202c;
+  --text-color: #e2e8f0;
+  --header-bg: #2d3748;
+  --border-color: #4a5568;
+  --sidebar-bg: #2d3748;
+  --chat-container-bg: #2d3748;
+  --message-user-bg: #4299e1;
+  --message-user-text: white;
+  --message-bot-bg: #4a5568;
+  --message-bot-text: #e2e8f0;
+  --button-bg: #4a5568;
+  --button-text: #e2e8f0;
+  --button-hover-bg: #616e7f;
+  --button-hover-text: #e2e8f0;
+  --modal-bg: #2d3748;
+  --input-bg: #4a5568;
+  --input-focus-border: #4299e1;
+  --link-color: #63b3ed;
+  --icon-color: #a0aec0;
+  --primary-accent: #63b3ed;
+  --primary-accent-darker: #4299e1;
+  --primary-accent-text: white;
+  --timestamp-color: #a0aec0;
+}
+
+/* Base Body & Global Styles */
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  overflow-x: auto;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Global Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
