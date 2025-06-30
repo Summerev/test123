@@ -1116,29 +1116,38 @@ export function getTranslation(key, ...args) {
 /**
  * Applies translations to all translatable elements on the page.
  */
-export function applyTranslations() {
+export function applyTranslations(lang = getCurrentLanguage()) {
+  // 번역 텍스트
   document.querySelectorAll('[data-translate-key]').forEach((el) => {
+    // 최근 채팅 항목처럼 언어 고정된 항목은 번역 제외
+    if (el.closest('.chat-item') && el.hasAttribute('data-original-lang')) return;
+
     const key = el.getAttribute('data-translate-key');
-    el.textContent = getTranslation(key);
+    el.textContent = getTranslation(key, lang);
   });
+
+  // placeholder 번역
   document.querySelectorAll('[data-translate-key-placeholder]').forEach((el) => {
     const key = el.getAttribute('data-translate-key-placeholder');
-    el.placeholder = getTranslation(key);
+    el.placeholder = getTranslation(key, lang);
   });
 
+  // 언어 버튼 텍스트
   const langButtonText = document.querySelector('.language-btn > span:first-child');
   if (langButtonText) {
-    langButtonText.textContent = getTranslation('language');
+    langButtonText.textContent = getTranslation('language', lang);
   }
 
+  // 다크/라이트 테마 버튼 툴팁
   const themeToggleButton = document.getElementById('themeToggle');
   if (themeToggleButton) {
     themeToggleButton.title =
       currentTheme === 'light'
-        ? getTranslation('themeToggleDark')
-        : getTranslation('themeToggleLight');
+        ? getTranslation('themeToggleDark', lang)
+        : getTranslation('themeToggleLight', lang);
   }
 }
+
 
 /**
  * Changes the current language and applies translations.

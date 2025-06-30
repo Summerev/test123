@@ -1,6 +1,5 @@
 // legal_web/static/js/ui/fileUpLoadUI.js (정리된 최종 버전)
 
-import { getCookie } from '../utils/domHelpers.js';
 import { createNewSession } from '../ui/chatUI.js';
 import { saveChatSessionInfo, getChatSessionList, setChatEnabled, addMessageToChatAndHistory } from '../data/chatHistoryManager.js';
 import { renderRecentChats, addMessageToUI } from './chatUI.js';
@@ -19,7 +18,6 @@ let docTypeTermsBtn;
 let browseFileButton;
 let dropArea;
 let fileInfoMessage;
-let chatInputContainer;
 
 /**
  * 드래그 앤 드롭 영역의 활성화/비활성화 상태를 설정합니다.
@@ -100,7 +98,7 @@ async function handleFile(file) {
     const uploadingMessage = {
         id: 'upload-' + Date.now(),
         sender: 'bot',
-        text: `파일 '${fileName}' 업로드 중 입니다.`,
+        text: `파일 '${fileName}' 업로드 중...`,
         timestamp: new Date().toISOString()
     };
 
@@ -132,11 +130,9 @@ async function handleFile(file) {
 
             // 성공 메시지 생성
             const successMessage = {
-                id: uploadingMessage.id,
+                id: uploadingMessage.id, // 같은 ID 사용하여 교체
                 sender: 'bot',
-                // uploadResult.text (요약문)가 있으면, 그 내용을 직접 메시지에 포함시킵니다.
-                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n` +
-                    `${uploadResult.text ? uploadResult.text : '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!'}`,
+                text: `📄 파일 '${fileName}' (${selectedDocType} 유형) 업로드가 완료되었습니다.\n\n${uploadResult.text ? '✅ 문서 내용이 분석되었습니다. 이 문서에 대해 질문해보세요!' : '💬 이 문서에 대해 질문해보세요!'}`,
                 timestamp: new Date().toISOString()
             };
 
@@ -333,9 +329,11 @@ export function showWelcomeMessage() {
 export function forceResetWelcomeMessage() {
     console.log('웰컴 메시지 강제 리셋 시작');
 
-    // DOM 요소들을 다시 찾아서 확실히 초기화
-    const lang = window.currentLanguage || localStorage.getItem('legalBotLanguage') || 'ko';  // lang 정의
+    // ✅ 현재 탭의 언어 가져오기 (전역 window 객체 의존 X)
+    const sessionId = getActiveTab();
+    const lang = openTabs?.[sessionId]?.language || 'ko';
 
+    // DOM 요소 찾기
     const docTypeContract = document.getElementById('docTypeContract');
     const docTypeTerms = document.getElementById('docTypeTerms');
     const fileUpload = document.getElementById('fileUpload');
@@ -356,10 +354,10 @@ export function forceResetWelcomeMessage() {
         fileUpload.value = '';
     }
 
-    // 파일 이름 표시 완전 제거
+    // 파일 이름 표시 제거
     if (fileNameDisplayEl) {
         fileNameDisplayEl.textContent = '';
-        fileNameDisplayEl.style.display = 'none'; // 아예 숨김
+        fileNameDisplayEl.style.display = 'none';
     }
 
     // 드롭 영역 초기화
@@ -371,13 +369,16 @@ export function forceResetWelcomeMessage() {
     // 안내 메시지 복원
     if (fileInfoEl) {
         fileInfoEl.style.display = 'block';
-        fileInfoEl.setAttribute('data-translate-key', 'fileTypeWarning'); // ✅ 번역 키 지정
-        fileInfoEl.textContent = '';  // ✅ 초기화
-        applyTranslations(lang);  // ✅ 정확한 언어로 번역 적용
+        fileInfoEl.setAttribute('data-translate-key', 'fileTypeWarning');
+        fileInfoEl.textContent = '';
     }
+
+    // ✅ 탭 고유 언어 기준으로만 번역 적용
+    applyTranslations(lang);
 
     console.log('웰컴 메시지 강제 리셋 완료');
 }
+
 
 /**
  * 파일 업로드 관련 모든 이벤트 리스너를 초기화하는 함수
@@ -467,32 +468,29 @@ export function initFileUpload() {
     });
 }
 /**
-* 서버에 파일을 업로드하고 결과를 반환
-* 문서 유형(docType)에 따라 다른 API 엔드포인트를 호출
-* 
-* @param {File} file - 업로드할 파일 객체
-* @param {string} docType - 문서 유형 ('terms' 또는 'contract')
-* @param {string} sessionId - 현재 채팅 세션 ID
-* @returns {Promise<Object>} 서버 응답 결과 객체
-*/
-async function uploadFileToServer(file, docType, sessionId) {
+ * 서버에 파일을 업로드하고 결과를 반환
+ * 지금은 /chatbot/upload-file/에 연결됨 
+ * 
+ * @param {File} file - 업로드할 파일 객체 (예: 사용자가 선택한 .pdf, .docx 등)
+ * @returns {Promise<Object>} 서버 응답 결과 객체
+ * @returns {boolean} return.success - 업로드 성공 여부
+ * @returns {string} [return.text] - 서버에서 반환한 텍스트 (예: 추출된 문서 내용)
+ * @returns {string} [return.message] - 업로드 성공 메시지
+ * @returns {string} [return.error] - 실패 시 에러 메시지
+ */
+async function uploadFileToServer(file) {
     try {
         console.log('서버로 파일 업로드 시작:', file.name);
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('doc_type', docType);
-        formData.append('session_id', sessionId);
-        formData.append('language', getCurrentLanguage());
 
-        // 모든 문서 유형을 통합된 엔드포인트로 처리
-        const response = await fetch('/api/documents/analyze/', {
+        const response = await fetch('/chatbot/upload-file/', {
             method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
-            body: formData,
+            body: formData
         });
 
-        const data = await response.json();
+        console.log('서버 응답 상태:', response.status);
 
         if (response.ok) {
             const data = await response.json();

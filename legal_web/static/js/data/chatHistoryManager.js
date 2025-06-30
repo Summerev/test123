@@ -28,7 +28,7 @@ for (const sessionId in chat_session_info) {
             }
             // title이 없는 경우 기본값 설정
             if (currentData.title === undefined) {
-                currentData.title = '새 대화'; // 기본 제목
+                currentData.title = getTranslation('defaultChatTitle'); // ✅ 수정
             }
         }
     }
@@ -55,8 +55,13 @@ export function saveChatHistory() {
 }
 
 // 🔹 수정: saveChatSessionInfo 함수 - chat_session_info에 title과 canChat 함께 저장
-export function saveChatSessionInfo(sessionId, { titleText = '새 대화', canChatStatus = false, docType = null }) {
-    const title = titleText.length > 12 ? titleText.substring(0, 12) + '…' : titleText;
+export function saveChatSessionInfo(sessionId, {
+    titleText,
+    canChatStatus = false,
+    docType = null
+}) {
+    const titleRaw = titleText ?? getTranslation('defaultChatTitle');  // ✅ null 병합 연산자
+    const title = titleRaw.length > 12 ? titleRaw.substring(0, 12) + '…' : titleRaw;
 
     if (!chat_session_info[sessionId]) {
         chat_session_info[sessionId] = { title, canChat: canChatStatus };
@@ -238,17 +243,6 @@ function deleteChatSession(sessionId) {
     }
 }
 
-export function clearChatSessionTitles() {
-    chat_session_info = {}; // 모듈 내 변수 초기화
-    localStorage.setItem('chat_session_info', JSON.stringify(chat_session_info));
-    // openTabs 및 chatSessions 초기화는 clearAllChats에서 처리
-}
-
-
-
-export function getChatSessionInfo(sessionId) {
-    return chat_session_info[sessionId] || null;
-}
 export function exportAllChats() {
     const data = localStorage.getItem('chat_sessions');
     if (!data) {

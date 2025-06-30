@@ -1,7 +1,7 @@
 // static/js/ui/chatUI.js (수정된 내용)
 
 import { $, $$, on, addClass, removeClass, escapeRegExp, createElement } from '../utils/domHelpers.js';
-import { getTranslation, getLegalTerms, getCurrentLanguage } from '../data/translation.js';
+import { getTranslation, getLegalTerms, getCurrentLanguage, applyTranslations } from '../data/translation.js';
 import {
     formatTimestamp,
     saveChatSessionInfo,
@@ -11,7 +11,7 @@ import {
 } from '../data/chatHistoryManager.js';
 
 import { generateSessionId } from '../main.js';
-import { createTab, renderTabBar, switchTab, updateTabTitle } from './chatTabUI.js'
+import { createTab, renderTabBar, switchTab } from './chatTabUI.js'
 import { deleteChatSession, getChatSessionList } from '../data/chatHistoryManager.js';
 import { openTabs, chatSessions, setActiveTab, saveTabState } from '../state/chatTabState.js';
 import { forceResetWelcomeMessage } from './fileUpLoadUI.js'
@@ -337,7 +337,18 @@ export function renderRecentChats(chatList) {
         const li = document.createElement('li');
         li.className = 'chat-item';
         li.dataset.chatId = chat.id;
-        li.textContent = chat.title;
+
+        const span = document.createElement('span');
+        span.className = 'chat-title';
+        span.textContent = chat.title;
+
+        // 기본 타이틀이면 언어 고정 방지용 속성 부여
+        const isDefaultTitle = ['새 대화', 'New Chat', '新しいチャット', '新对话', 'Nuevo Chat'].includes(chat.title);
+        if (isDefaultTitle) {
+            span.setAttribute('data-original-lang', chat.language || 'ko');
+        }
+
+        li.appendChild(span);
 
         // 점 3개 버튼
         const btn = document.createElement('button');
@@ -346,10 +357,8 @@ export function renderRecentChats(chatList) {
 
         btn.addEventListener('click', e => {
             e.stopPropagation();
-
             closeAllContextMenus();
 
-            // ✅ 기존 모든 persistent 클래스 제거 (오직 하나만 유지)
             document.querySelectorAll('.menu-btn.persistent').forEach(btn => {
                 btn.classList.remove('persistent');
             });
@@ -363,8 +372,6 @@ export function renderRecentChats(chatList) {
             menu.style.zIndex = '9999';
 
             document.body.appendChild(menu);
-
-            // ✅ 현재 클릭된 버튼에만 persistent
             btn.classList.add('persistent');
 
             const outsideClickHandler = (event) => {
@@ -383,17 +390,21 @@ export function renderRecentChats(chatList) {
 
         li.appendChild(btn);
 
-        // 클릭하면 탭 생성/전환
+        // ✅ 클릭 시 해당 탭 언어로 번역 적용
         li.addEventListener('click', () => {
             if (!openTabs[chat.id]) {
                 createTab(chat.id, chat.title);
             }
             switchTab(chat.id);
+
+            const tabLang = openTabs[chat.id]?.language || chat.language || 'ko';
+            applyTranslations(tabLang);  // 🔥 현재 탭 언어 기준 번역
         });
 
         ul.appendChild(li);
     });
 }
+
 
 // context-menu 생성 시 삭제 버튼 이벤트에 sessionId 추가
 function createContextMenu(sessionId, title) {

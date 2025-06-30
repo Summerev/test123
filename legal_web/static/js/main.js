@@ -129,19 +129,18 @@ async function processUserMessage(text, tabId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken') 
+                'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify({
                 message: text,
                 session_id: tabId,
-                docType: openTabs[tabId]?.docType || 'terms', 
-                history: (chatSessions[tabId] || []).slice(0, -1), 
-                language: getCurrentLanguage() 
+                docType: openTabs[tabId]?.docType || 'terms',
+                history: (chatSessions[tabId] || []).slice(0, -1),
+                language: getCurrentLanguage()
             })
         });
 
-<<<<<<< HEAD
-      // 3. 응답을 받으면, 저장해둔 임시 메시지 요소를 바로 삭제합니다.
+        // 3. 응답을 받으면, 저장해둔 임시 메시지 요소를 바로 삭제합니다.
         //    이제 getElementById로 찾을 필요가 없습니다.
         if (thinkingMessageElement) {
             thinkingMessageElement.remove();
@@ -165,10 +164,10 @@ async function processUserMessage(text, tabId) {
             text: botReply,
             timestamp: new Date().toISOString()
         };
-        
+
         // UI에 새 메시지 추가
         addMessageToUI(botMsg.text, botMsg.sender, botMsg.id, botMsg.timestamp);
-        
+
         // 6. 세션 데이터(localStorage)에 실제 답변 저장
         chatSessions[tabId].push(botMsg);
         saveTabState();
@@ -183,7 +182,6 @@ async function processUserMessage(text, tabId) {
         addMessageToUI(`❌ 네트워크 오류: ${error.message}`, 'bot', generateMessageId(), new Date().toISOString());
         console.error('Error processing user message:', error);
     }
-=======
     const activeTabId = tabId || getActiveTab(); // 매개변수로 받은 tabId 우선 사용
 
     if (!chatSessions[activeTabId]) {
@@ -205,7 +203,6 @@ async function processUserMessage(text, tabId) {
 
     // 상태 저장
     saveTabState();
->>>>>>> 8da8328 (css오류수정 및 기능 추가)
 }
 
 
