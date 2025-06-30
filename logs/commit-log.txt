@@ -217,3 +217,9 @@ Author: grozovoi10
 Message: Pylint 오류 수정
 Commit: dbffa55dcc460d77a557f1df13b30deed79f6cff
 
+==== New Push ====
+Time: 2025-06-30 01:55:45
+Author: byeol286
+Message: rag 질문의도 구분 및 프롬프트 추가, 보완
+Commit: a30b9492a0a9e6c60f3019aa473e55a6a22be029
+
