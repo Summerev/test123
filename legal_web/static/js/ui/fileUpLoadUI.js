@@ -315,7 +315,7 @@ export function showWelcomeMessage() {
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
         chatInput.value = '';
-        chatInput.placeholder = '법률 문서나 조항을 입력하거나, 질문을 입력하세요...';
+        chatInput.placeholder = '계약서, 약관에 관련된 질문을 하세요...';
         chatInput.disabled = false; // 입력창 활성화
     }
 

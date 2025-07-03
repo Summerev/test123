@@ -3,12 +3,15 @@
 .welcome-message {
     text-align: center;
     max-width: 600px;
-    margin: auto; /* flex-grow와 함께 중앙 정렬 */
+    margin: auto;
+    /* flex-grow와 함께 중앙 정렬 */
     color: var(--text-color);
     display: flex;
     flex-direction: column;
-    justify-content: center; /* 세로 중앙 정렬 */
-    height: 100%; /* 부모 .chat-messages의 높이를 채우도록 */
+    justify-content: center;
+    /* 세로 중앙 정렬 */
+    height: 100%;
+    /* 부모 .chat-messages의 높이를 채우도록 */
 }
 
 .welcome-message.hidden {
@@ -153,7 +156,8 @@
     color: var(--icon-color);
     margin-top: 10px;
     text-align: center;
-    display: block; /* 기본적으로 표시 */
+    display: block;
+    /* 기본적으로 표시 */
 }
 
 .file-name-display {
@@ -161,16 +165,20 @@
     color: var(--primary-accent);
     margin-top: 15px;
     font-size: 1em;
-    min-height: 1.2em; /* 높이 고정으로 레이아웃 깨짐 방지 */
-    display: none; /* 초기에는 숨김 */
+    min-height: 1.2em;
+    /* 높이 고정으로 레이아웃 깨짐 방지 */
+    display: none;
+    /* 초기에는 숨김 */
 }
 
 .file-name-display:empty {
-    display: none; /* 내용이 없으면 완전히 숨김 */
+    display: none;
+    /* 내용이 없으면 완전히 숨김 */
 }
 
 .file-name-display:not(:empty) {
-    display: block; /* 내용이 있을 때만 표시 */
+    display: block;
+    /* 내용이 있을 때만 표시 */
 }
 
 .welcome-message.reset {
@@ -178,6 +186,11 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }

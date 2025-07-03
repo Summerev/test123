@@ -88,68 +88,28 @@
   border-bottom: none;
 }
 
+
 .btn-login {
-  color: #1a202c;
-  /* 어두운 텍스트 */
+  color: var(--text-color);
   text-decoration: none;
   font-weight: 500;
-  padding: 12px 30px;
+  padding: 0.5rem 1rem;
   border-radius: 6px;
   transition: all 0.2s ease;
-  background: #c2daf2;
-  border: 1px solid #a5b4fc;
+  background: none;
+  border: none;
   cursor: pointer;
-
-  /* ✅ 중앙 정렬 추가 */
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
 }
 
 .btn-login:hover {
-  background: #c2daf2;
-  color: #0f172a;
+  background: var(--button-hover-bg);
+  color: var(--button-hover-text);
 }
 
 
-.btn-signup {
-  background: #3b82f6;
-  color: #ffffff;
-  border: 1px solid #2563eb;
-}
 
-.btn-signup,
-.btn-signout {
-  background: var(--primary-accent);
-  color: var(--primary-accent-text);
-  text-decoration: none;
-  font-weight: 500;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  min-width: 100px;
 
-  /* ✅ 중앙 정렬 추가 */
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
 
-.btn-signup:hover,
-.btn-signout:hover {
-  background: var(--primary-accent-darker);
-  transform: translateY(-1px);
-}
 
 .sidebar-btn-standalone {
   display: flex;
@@ -614,12 +574,7 @@ body.dark-mode .mode-options-sidebar input[type='radio']:checked+label {
   background: #d32f2f;
 }
 
-/* 🌙 다크모드 언어 선택 버튼 */
-body.dark-mode .language-btn {
-  background: #374151;
-  color: #e5e7eb;
-  border: 1px solid #4b5563;
-}
+
 
 body.dark-mode .language-btn:hover {
   background: #4b5563;

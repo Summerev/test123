@@ -23,14 +23,9 @@
     width: 100%;
 }
 
-.tab-bar::-webkit-scrollbar {
-    height: 6px;
-}
 
-.tab-bar::-webkit-scrollbar-thumb {
-    background-color: #aaa;
-    border-radius: 3px;
-}
+
+
 
 .chat-header h2 {
     font-size: 1.5rem;
@@ -429,24 +424,19 @@ body.dark-mode .send-button:disabled {
 }
 
 .tab-bar {
-    width: 100%;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    display: flex;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    align-items: center;
-    padding: 0 8px;
-    border-bottom: 1px solid #ddd;
-    background-color: #f9f9f9;
+    height: 50px;
+    min-height: 50px;
+    background-color: var(--sidebar-bg);
     box-sizing: border-box;
-    border-radius: 0.75rem 0.75rem 0 0;
-    scrollbar-width: thin;
-
-    /* ✅ 고정 높이 */
-    height: 53px;
-    min-height: 53px;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0.75rem 0.75rem 0px 0px;
+    transition: background-color 0.3s, border-color 0.3s;
+    white-space: nowrap !important;
 }
 
 .container {
